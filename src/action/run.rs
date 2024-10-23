@@ -1,9 +1,11 @@
 use crate::{command::run::CommandFlags, platform_specific::get_config};
 
-pub fn execute(option: CommandFlags) {
+pub fn execute(flags: CommandFlags) {
+    log::info!("execute action: run");
+
     let config = get_config();
 
-    println!("config: {:?}", config);
+    log::debug!("current config: {:?}", config);
 
-    println!("run: {:?}", option);
+    log::debug!("flags: {:?}", flags);
 }
