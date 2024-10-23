@@ -53,14 +53,23 @@ pub struct Table {
     pub indexes: Vec<Index>,
 }
 
+fn format_type(data_type: &str, character_maximum_length: i32) -> String {
+    match data_type {
+        "character varying" => format!("varchar({character_maximum_length})"),
+        _ => data_type.to_string(),
+    }
+}
+
 pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
     log::debug!("describe table: {table_name}");
 
     // 1. 컬럼 리스트 정보 조회
-    let query_result = sqlx::query_as::<_, (String, String, String, String, String)>(
+    let query_result = sqlx::query_as::<_, (String, String, i32, String, String, String)>(
         r#"
         SELECT 
-            c.column_name, c.data_type, coalesce(c.column_default, ''), c.is_nullable, 
+            c.column_name, 
+            c.data_type, coalesce(c.character_maximum_length, 0) as character_maximum_length,
+            coalesce(c.column_default, ''), c.is_nullable, 
             coalesce(pgd.description, '') as comment
         FROM 
             information_schema.columns c
@@ -84,13 +93,15 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
 
     let columns = query_result
         .into_iter()
-        .map(|(name, data_type, default, nullable, comment)| Column {
-            name,
-            data_type,
-            default,
-            nullable: nullable == "YES",
-            comment,
-        })
+        .map(
+            |(name, data_type, character_maximum_length, default, nullable, comment)| Column {
+                name,
+                data_type: format_type(&data_type, character_maximum_length),
+                default,
+                nullable: nullable == "YES",
+                comment,
+            },
+        )
         .collect();
 
     // 2. 테이블 메타 정보 조회
