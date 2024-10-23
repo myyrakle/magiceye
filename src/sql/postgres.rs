@@ -47,6 +47,7 @@ pub struct Table {
 pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
     log::debug!("describe table: {table_name}");
 
+    // 1. 컬럼 리스트 정보 조회
     let query_result = sqlx::query_as::<_, (String, String, String, String, String)>(
         r#"
         SELECT 
@@ -57,6 +58,7 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         LEFT JOIN 
             pg_catalog.pg_description pgd 
         ON pgd.objsubid = c.ordinal_position
+
         AND 
             pgd.objoid = (
                 SELECT oid 
@@ -82,9 +84,29 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         })
         .collect();
 
+    // 2. 테이블 메타 정보 조회
+    let query_result = sqlx::query_as::<_, (String,)>(
+        r#"
+            SELECT pgd.description
+            FROM pg_catalog.pg_description pgd
+            JOIN pg_catalog.pg_class c ON c.oid = pgd.objoid
+            WHERE c.relname = $1
+            AND pgd.objsubid = 0
+        "#,
+    )
+    .bind(table_name)
+    .fetch_all(pool)
+    .await
+    .expect("Failed to fetch column list");
+
+    let table_comment = query_result
+        .get(0)
+        .map(|(comment,)| comment.to_owned())
+        .unwrap_or_default();
+
     let table = Table {
         name: table_name.to_string(),
-        comment: "".to_string(),
+        comment: table_comment,
         columns,
     };
 
