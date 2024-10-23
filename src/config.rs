@@ -1,6 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum CheckType {
+    CommentOfColumn,
+    CommentOfTable,
+    TypeOfColumn,
+    IndexOfTable,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Language {
     English,
     Korean,
@@ -29,6 +37,7 @@ pub struct DatabasePair {
 pub struct Config {
     pub database_pairs: Vec<DatabasePair>,
     pub current_language: Language,
+    pub ignore_list: Vec<CheckType>,
 }
 
 impl Default for Config {
@@ -36,6 +45,7 @@ impl Default for Config {
         Self {
             database_pairs: vec![],
             current_language: Language::default(),
+            ignore_list: vec![],
         }
     }
 }
