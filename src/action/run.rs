@@ -1,6 +1,4 @@
-use crate::{
-    command::run::CommandFlags, platform_specific::get_config, sql::postgres::get_connection_pool,
-};
+use crate::{command::run::CommandFlags, platform_specific::get_config};
 
 pub async fn execute(flags: CommandFlags) {
     log::info!("execute action: run");

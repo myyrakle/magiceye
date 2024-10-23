@@ -38,10 +38,19 @@ pub struct Column {
 }
 
 #[derive(Debug)]
+pub struct Index {
+    pub name: String,
+    pub columns: Vec<String>,
+    pub predicate: String,
+    pub is_unique: bool,
+}
+
+#[derive(Debug)]
 pub struct Table {
     pub name: String,
     pub comment: String,
     pub columns: Vec<Column>,
+    pub indexes: Vec<Index>,
 }
 
 pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
@@ -104,10 +113,53 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         .map(|(comment,)| comment.to_owned())
         .unwrap_or_default();
 
+    // 3. 테이블에 속한 인덱스 목록 조회
+    let query_result = sqlx::query_as::<_, (String, String, bool, String)>(
+        r#"
+            SELECT
+                i.relname AS index_name,
+                string_agg(a.attname, ',' ORDER BY array_position(ix.indkey, a.attnum)) AS columns,
+                ix.indisunique AS is_unique,
+                coalesce(pg_get_expr(ix.indpred, ix.indrelid), '') AS predicate
+            FROM
+                pg_class t,
+                pg_class i,
+                pg_index ix,
+                pg_attribute a
+            WHERE
+                t.oid = ix.indrelid
+                AND i.oid = ix.indexrelid
+                AND a.attrelid = t.oid
+                AND a.attnum = ANY(ix.indkey)
+                AND i.relname IN (
+                    SELECT indexname
+                    FROM pg_indexes
+                    WHERE tablename = $1
+                )
+            GROUP BY
+                i.relname, ix.indisunique, ix.indpred, ix.indrelid;
+        "#,
+    )
+    .bind(table_name)
+    .fetch_all(pool)
+    .await
+    .expect("Failed to fetch index list");
+
+    let indexes = query_result
+        .into_iter()
+        .map(|(name, columns, is_unique, predicate)| Index {
+            name,
+            columns: columns.split(',').map(|s| s.to_string()).collect(),
+            is_unique: is_unique,
+            predicate: predicate,
+        })
+        .collect();
+
     let table = Table {
         name: table_name.to_string(),
         comment: table_comment,
         columns,
+        indexes,
     };
 
     table
