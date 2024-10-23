@@ -14,7 +14,10 @@ async fn main() {
 
     match args.action {
         command::SubCommand::Run(command) => {
-            action::execute(command.flags).await;
+            action::run::execute(command.flags).await;
+        }
+        command::SubCommand::Init(command) => {
+            unimplemented!();
         }
     }
 }

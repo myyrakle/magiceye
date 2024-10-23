@@ -1,3 +1,4 @@
+pub mod init;
 pub mod run;
 
 use clap::Parser;
@@ -12,4 +13,5 @@ pub struct Command {
 #[derive(clap::Subcommand, Debug)]
 pub enum SubCommand {
     Run(run::Command),
+    Init(init::Command),
 }
