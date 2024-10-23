@@ -1,3 +1,13 @@
+mod command;
+
 fn main() {
-    println!("Hello, world!");
+    use clap::Parser;
+
+    let args = command::Command::parse();
+
+    match args.action {
+        command::SubCommand::Run(run) => {
+            println!("{:?}", run);
+        }
+    }
 }
