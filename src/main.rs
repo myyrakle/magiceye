@@ -17,7 +17,7 @@ async fn main() {
             action::run::execute(command.flags).await;
         }
         command::SubCommand::Init(command) => {
-            unimplemented!();
+            action::init::execute(command.flags).await;
         }
     }
 }
