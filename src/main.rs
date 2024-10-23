@@ -6,6 +6,8 @@ pub mod sql;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     use clap::Parser;
 
     let args = command::Command::parse();
