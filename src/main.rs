@@ -1,4 +1,5 @@
-mod command;
+pub(crate) mod action;
+pub(crate) mod command;
 
 fn main() {
     use clap::Parser;
@@ -6,8 +7,8 @@ fn main() {
     let args = command::Command::parse();
 
     match args.action {
-        command::SubCommand::Run(run) => {
-            println!("{:?}", run);
+        command::SubCommand::Run(command) => {
+            action::execute(command.flags);
         }
     }
 }
