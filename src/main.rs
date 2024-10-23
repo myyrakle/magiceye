@@ -1,5 +1,6 @@
 pub(crate) mod action;
 pub(crate) mod command;
+pub mod config;
 pub mod platform_specific;
 
 fn main() {
