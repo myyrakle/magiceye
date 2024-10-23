@@ -27,3 +27,66 @@ pub async fn get_table_list(pool: &Pool<Postgres>) -> Vec<String> {
         .map(|(table_name,)| table_name)
         .collect()
 }
+
+#[derive(Debug)]
+pub struct Column {
+    pub name: String,
+    pub data_type: String,
+    pub default: String,
+    pub nullable: bool,
+    pub comment: String,
+}
+
+#[derive(Debug)]
+pub struct Table {
+    pub name: String,
+    pub comment: String,
+    pub columns: Vec<Column>,
+}
+
+pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
+    log::debug!("describe table: {table_name}");
+
+    let query_result = sqlx::query_as::<_, (String, String, String, String, String)>(
+        r#"
+        SELECT 
+            c.column_name, c.data_type, coalesce(c.column_default, ''), c.is_nullable, 
+            coalesce(pgd.description, '') as comment
+        FROM 
+            information_schema.columns c
+        LEFT JOIN 
+            pg_catalog.pg_description pgd 
+        ON pgd.objsubid = c.ordinal_position
+        AND 
+            pgd.objoid = (
+                SELECT oid 
+                FROM pg_catalog.pg_class 
+                WHERE relname = c.table_name
+            )
+        WHERE c.table_name = $1
+    "#,
+    )
+    .bind(table_name)
+    .fetch_all(pool)
+    .await
+    .expect("Failed to fetch column list");
+
+    let columns = query_result
+        .into_iter()
+        .map(|(name, data_type, default, nullable, comment)| Column {
+            name,
+            data_type,
+            default,
+            nullable: nullable == "YES",
+            comment,
+        })
+        .collect();
+
+    let table = Table {
+        name: table_name.to_string(),
+        comment: "".to_string(),
+        columns,
+    };
+
+    table
+}
