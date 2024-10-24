@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use sqlx::database;
 
 use crate::{
     command::run::CommandFlags,
     platform_specific::get_config,
-    sql::postgres::{describe_table, get_connection_pool, get_table_list, ping},
+    sql::postgres::{describe_table, get_connection_pool, get_table_list},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -103,9 +102,148 @@ pub async fn execute(flags: CommandFlags) {
 
         match target_table {
             Some(target_table) => {
-                for column in base_table.columns {}
+                for column in base_table.columns {
+                    let target_column = target_table.columns.iter().find(|c| c.name == column.name);
 
-                for index in base_table.indexes {}
+                    let base_column_name = column.name;
+
+                    match target_column {
+                        Some(target_column) => {
+                            if column.data_type != target_column.data_type {
+                                // Column "{}" in table "{}" has different data type.
+
+                                let base_data_type = &column.data_type;
+                                let target_data_type = &target_column.data_type;
+
+                                let report_text = format!(
+                                    "Column: {base_table_name}.{base_column_name}의 데이터 타입이 다릅니다. => {base_data_type} != {target_data_type}"
+                                );
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
+
+                            if column.comment != target_column.comment {
+                                // Column "{}" in table "{}" has different comment.
+                                let base_comment = &column.comment;
+                                let target_comment = &target_column.comment;
+
+                                let report_text = format!(
+                                    "Column: {base_table_name}.{base_column_name}의 코멘트가 다릅니다. => {base_comment} != {target_comment}"
+                                );
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
+
+                            if column.nullable != target_column.nullable {
+                                // Column "{}" in table "{}" has different nullable.
+                                let base_nullable =
+                                    if column.nullable { "NULL" } else { "NOT NULL" };
+                                let target_nullable = if target_column.nullable {
+                                    "NULL"
+                                } else {
+                                    "NOT NULL"
+                                };
+
+                                let report_text = format!(
+                                    "Column: {base_table_name}.{base_column_name}의 NULLABLE이 다릅니다. => {base_nullable} != {target_nullable}"
+                                );
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
+
+                            if column.default != target_column.default {
+                                // Column "{}" in table "{}" has different default value.
+                                let base_default = &column.default;
+                                let target_default = &target_column.default;
+
+                                let report_text = format!(
+                                    "Column: {base_table_name}.{base_column_name}의 DEFAULT 값이 다릅니다. => {base_default} != {target_default}"
+                                );
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
+                        }
+                        None => {
+                            // Column "{}" in table "{}" exists in the base database, but not in the target database.
+                            let report_text = format!(
+                                "Column: {base_table_name}.{base_column_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
+                            );
+
+                            report_table.report_list.push(report_text);
+                            has_report = true;
+                        }
+                    }
+                }
+
+                for index in base_table.indexes {
+                    let target_index = target_table.indexes.iter().find(|i| i.name == index.name);
+
+                    let base_index_name = &index.name;
+
+                    match target_index {
+                        Some(target_index) => {
+                            if index.columns != target_index.columns {
+                                // Index "{}" in table "{}" has different columns.
+                                let base_columns = index.columns.join(", ");
+                                let target_columns = target_index.columns.join(", ");
+
+                                let report_text = format!(
+                                    "Index: {base_table_name}.{base_index_name}의 컬럼이 다릅니다. 순서까지 확인해주세요. => {base_columns} != {target_columns}"
+                                );
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
+
+                            if index.predicate != target_index.predicate {
+                                // Index "{}" in table "{}" has different predicate.
+                                let base_predicate = &index.predicate;
+                                let target_predicate = &target_index.predicate;
+
+                                let report_text = format!(
+                                    "Index: {base_table_name}.{base_index_name}의 조건이 다릅니다. => {base_predicate} != {target_predicate}"
+                                );
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
+
+                            if index.is_unique != target_index.is_unique {
+                                // Index "{}" in table "{}" has different uniqueness.
+                                let base_uniqueness = if index.is_unique {
+                                    "UNIQUE"
+                                } else {
+                                    "NOT UNIQUE"
+                                };
+                                let target_uniqueness = if target_index.is_unique {
+                                    "UNIQUE"
+                                } else {
+                                    "NOT UNIQUE"
+                                };
+
+                                let report_text = format!(
+                                    "Index: {base_table_name}.{base_index_name}의 UNIQUE 여부가 다릅니다. => {base_uniqueness} != {target_uniqueness}"
+                                );
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
+                        }
+                        None => {
+                            // Index "{}" in table "{}" exists in the base database, but not in the target database.
+                            let report_text = format!(
+                                "Index: {base_table_name}.{base_index_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
+                            );
+
+                            report_table.report_list.push(report_text);
+                            has_report = true;
+                        }
+                    }
+                }
             }
             None => {
                 // Table "{}" exists in the base database, but not in the target database.
