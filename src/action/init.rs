@@ -69,9 +69,17 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
 
     let mut step = Step::default();
 
-    let mut input_text = String::new();
-    let mut base_connection = String::new();
-    let mut target_connection = String::new();
+    let mut base_connection = config
+        .default_database_pair
+        .clone()
+        .unwrap_or_default()
+        .base_connection
+        .clone();
+    let mut target_connection = config
+        .default_database_pair
+        .clone()
+        .unwrap_or_default()
+        .target_connection;
 
     let mut stacked_text = String::new();
     let mut render_text = String::new();
@@ -85,11 +93,11 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             Step::EnterLanguage => {}
             Step::EnterBaseConnection => {
                 render_text.push_str("▶ Enter Base Connection URL: ");
-                render_text.push_str(&input_text);
+                render_text.push_str(&base_connection);
             }
             Step::EnterTargetConnection => {
                 render_text.push_str("▶ Enter Target Connection URL: ");
-                render_text.push_str(&input_text);
+                render_text.push_str(&target_connection);
             }
             Step::PostProcess => {
                 config.default_database_pair = Some(DatabasePair {
@@ -143,17 +151,15 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                         },
                         Step::EnterBaseConnection => match key.code {
                             KeyCode::Char(c) => {
-                                input_text.push(c);
+                                base_connection.push(c);
                             }
                             KeyCode::Esc => {
                                 break;
                             }
                             KeyCode::Backspace | KeyCode::Delete => {
-                                input_text.pop();
+                                base_connection.pop();
                             }
                             KeyCode::Enter => {
-                                std::mem::swap(&mut base_connection, &mut input_text);
-
                                 step = step.next();
 
                                 stacked_text.push_str(
@@ -164,16 +170,15 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                         },
                         Step::EnterTargetConnection => match key.code {
                             KeyCode::Char(c) => {
-                                input_text.push(c);
+                                target_connection.push(c);
                             }
                             KeyCode::Esc => {
                                 break;
                             }
                             KeyCode::Backspace | KeyCode::Delete => {
-                                input_text.pop();
+                                target_connection.pop();
                             }
                             KeyCode::Enter => {
-                                std::mem::swap(&mut target_connection, &mut input_text);
                                 step = step.next();
 
                                 stacked_text.push_str(

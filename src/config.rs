@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum CheckType {
     CommentOfColumn,
     CommentOfTable,
@@ -8,7 +8,7 @@ pub enum CheckType {
     IndexOfTable,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Language {
     English,
     Korean,
@@ -20,12 +20,12 @@ impl Default for Language {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum DatabaseType {
     Postgres,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DatabasePair {
     pub name: String,
     pub database_type: DatabaseType,
@@ -33,7 +33,18 @@ pub struct DatabasePair {
     pub target_connection: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl Default for DatabasePair {
+    fn default() -> Self {
+        Self {
+            name: "default".to_string(),
+            database_type: DatabaseType::Postgres,
+            base_connection: String::new(),
+            target_connection: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub database_pairs: Vec<DatabasePair>,
     pub default_database_pair: Option<DatabasePair>,
