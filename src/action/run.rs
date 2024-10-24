@@ -49,6 +49,8 @@ pub async fn execute(flags: CommandFlags) {
         }
     };
 
+    println!(">> connected to base database");
+
     let target_connection_pool = match target_connection_pool {
         Ok(pool) => pool,
         Err(error) => {
@@ -57,10 +59,14 @@ pub async fn execute(flags: CommandFlags) {
         }
     };
 
+    println!(">> connected to target database");
+
     // 3. base 테이블 목록을 조회합니다.
+    println!(">> fetching base table list...");
     let base_table_list = get_table_list(&base_connection_pool).await;
 
     // 해당 테이블별 상세 목록을 조회합니다.
+    println!(">> fetching base table details...");
     let mut base_table_map = HashMap::new();
 
     for table_name in base_table_list {
@@ -70,11 +76,13 @@ pub async fn execute(flags: CommandFlags) {
     }
 
     // 4. 대상 테이블 목록을 조회합니다.
+    println!(">> fetching target table list...");
     let target_table_list = get_table_list(&target_connection_pool).await;
 
     // 해당 테이블별 상세 목록을 조회합니다.
     let mut target_table_map = HashMap::new();
 
+    println!(">> fetching target table details...");
     for table_name in target_table_list {
         let target_table = describe_table(&target_connection_pool, &table_name).await;
 
@@ -90,8 +98,18 @@ pub async fn execute(flags: CommandFlags) {
         report_table_list: vec![],
     };
 
+    let table_count = base_table_map.len();
+    let mut i = 0;
+
+    println!(">> table count: {}", table_count);
+
     for (base_table_name, base_table) in base_table_map {
         let target_table = target_table_map.get(&base_table_name);
+
+        println!(
+            ">> comparing table: {}... ({i}/{table_count})",
+            base_table_name
+        );
 
         let mut has_report = false;
 
@@ -259,9 +277,16 @@ pub async fn execute(flags: CommandFlags) {
         if has_report {
             report.report_table_list.push(report_table);
         }
+
+        i += 1;
     }
 
+    println!(">> comparison done.");
+
     // 6. 보고서를 파일로 생성합니다.
+
+    println!(">> saving report file...");
+
     let current_date = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
     let report_file_name = format!("report_{}.json", current_date);
 
@@ -269,5 +294,5 @@ pub async fn execute(flags: CommandFlags) {
 
     std::fs::write(&report_file_name, &report_json).unwrap();
 
-    println!("report file saved: {}", report_file_name);
+    println!("@ report file saved: {}", report_file_name);
 }
