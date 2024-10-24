@@ -1,13 +1,18 @@
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
-pub async fn get_connection_pool(connection_url: &str) -> Pool<Postgres> {
+pub async fn ping(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
+    pool.acquire().await?;
+
+    Ok(())
+}
+
+pub async fn get_connection_pool(connection_url: &str) -> Result<Pool<Postgres>, sqlx::Error> {
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(connection_url)
-        .await
-        .expect("Failed to create connection pool");
+        .await?;
 
-    pool
+    Ok(pool)
 }
 
 pub async fn get_table_list(pool: &Pool<Postgres>) -> Vec<String> {
