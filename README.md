@@ -11,7 +11,7 @@
 
 ## Get Started
 
-Installation is easy using cargo.
+Install using cargo
 
 ```bash
 cargo install magiceye
