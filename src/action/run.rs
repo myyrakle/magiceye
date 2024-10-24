@@ -98,8 +98,18 @@ pub async fn execute(flags: CommandFlags) {
         report_table_list: vec![],
     };
 
+    let table_count = base_table_map.len();
+    let mut i = 0;
+
+    println!(">> table count: {}", table_count);
+
     for (base_table_name, base_table) in base_table_map {
         let target_table = target_table_map.get(&base_table_name);
+
+        println!(
+            ">> comparing table: {}... ({i}/{table_count})",
+            base_table_name
+        );
 
         let mut has_report = false;
 
@@ -267,6 +277,8 @@ pub async fn execute(flags: CommandFlags) {
         if has_report {
             report.report_table_list.push(report_table);
         }
+
+        i += 1;
     }
 
     // 6. 보고서를 파일로 생성합니다.
