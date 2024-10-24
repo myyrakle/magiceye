@@ -147,9 +147,6 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                             _ => {}
                         },
                         Step::EnterBaseConnection => match key.code {
-                            KeyCode::Char('q') => {
-                                break;
-                            }
                             KeyCode::Char(c) => {
                                 input_text.push(c);
                             }
@@ -171,9 +168,6 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                             _ => {}
                         },
                         Step::EnterTargetConnection => match key.code {
-                            KeyCode::Char('q') => {
-                                break;
-                            }
                             KeyCode::Char(c) => {
                                 input_text.push(c);
                             }
