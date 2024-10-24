@@ -281,7 +281,12 @@ pub async fn execute(flags: CommandFlags) {
         i += 1;
     }
 
+    println!(">> comparison done.");
+
     // 6. 보고서를 파일로 생성합니다.
+
+    println!(">> saving report file...");
+
     let current_date = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
     let report_file_name = format!("report_{}.json", current_date);
 
@@ -289,5 +294,5 @@ pub async fn execute(flags: CommandFlags) {
 
     std::fs::write(&report_file_name, &report_json).unwrap();
 
-    println!("report file saved: {}", report_file_name);
+    println!("@ report file saved: {}", report_file_name);
 }
