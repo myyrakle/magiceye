@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     command::run::CommandFlags,
+    config::Language,
     platform_specific::get_config,
     sql::postgres::{describe_table, get_connection_pool, get_table_list},
 };
@@ -128,34 +129,40 @@ pub async fn execute(flags: CommandFlags) {
                     match target_column {
                         Some(target_column) => {
                             if column.data_type != target_column.data_type {
-                                // Column "{}" in table "{}" has different data type.
-
                                 let base_data_type = &column.data_type;
                                 let target_data_type = &target_column.data_type;
 
-                                let report_text = format!(
-                                    "Column: {base_table_name}.{base_column_name}의 데이터 타입이 다릅니다. => {base_data_type} != {target_data_type}"
-                                );
+                                let report_text = match config.current_language {
+                                    Language::Korean=>format!(
+                                        "Column: {base_table_name}.{base_column_name}의 데이터 타입이 다릅니다. => {base_data_type} != {target_data_type}"
+                                    ),
+                                    Language::English=>format!(
+                                        "Column: {base_table_name}.{base_column_name} has different data type. => {base_data_type} != {target_data_type}"
+                                    ),
+                                };
 
                                 report_table.report_list.push(report_text);
                                 has_report = true;
                             }
 
                             if column.comment != target_column.comment {
-                                // Column "{}" in table "{}" has different comment.
                                 let base_comment = &column.comment;
                                 let target_comment = &target_column.comment;
 
-                                let report_text = format!(
-                                    "Column: {base_table_name}.{base_column_name}의 코멘트가 다릅니다. => {base_comment} != {target_comment}"
-                                );
+                                let report_text = match config.current_language {
+                                    Language::Korean=>format!(
+                                        "Column: {base_table_name}.{base_column_name}의 코멘트가 다릅니다. => {base_comment} != {target_comment}"
+                                    ),
+                                    Language::English=>format!(
+                                        "Column: {base_table_name}.{base_column_name} has different comment. => {base_comment} != {target_comment}"
+                                    ),
+                                };
 
                                 report_table.report_list.push(report_text);
                                 has_report = true;
                             }
 
                             if column.nullable != target_column.nullable {
-                                // Column "{}" in table "{}" has different nullable.
                                 let base_nullable =
                                     if column.nullable { "NULL" } else { "NOT NULL" };
                                 let target_nullable = if target_column.nullable {
@@ -164,32 +171,45 @@ pub async fn execute(flags: CommandFlags) {
                                     "NOT NULL"
                                 };
 
-                                let report_text = format!(
-                                    "Column: {base_table_name}.{base_column_name}의 NULLABLE이 다릅니다. => {base_nullable} != {target_nullable}"
-                                );
+                                let report_text = match config.current_language {
+                                    Language::Korean=>format!(
+                                        "Column: {base_table_name}.{base_column_name}의 NULLABLE이 다릅니다. => {base_nullable} != {target_nullable}"
+                                    ),
+                                    Language::English=>format!(
+                                        "Column: {base_table_name}.{base_column_name} has different nullable. => {base_nullable} != {target_nullable}"
+                                    ),
+                                };
 
                                 report_table.report_list.push(report_text);
                                 has_report = true;
                             }
 
                             if column.default != target_column.default {
-                                // Column "{}" in table "{}" has different default value.
                                 let base_default = &column.default;
                                 let target_default = &target_column.default;
 
-                                let report_text = format!(
-                                    "Column: {base_table_name}.{base_column_name}의 DEFAULT 값이 다릅니다. => {base_default} != {target_default}"
-                                );
+                                let report_text = match config.current_language {
+                                    Language::Korean=>format!(
+                                        "Column: {base_table_name}.{base_column_name}의 DEFAULT 값이 다릅니다. => {base_default} != {target_default}"
+                                    ),
+                                    Language::English=>format!(
+                                        "Column: {base_table_name}.{base_column_name} has different default value. => {base_default} != {target_default}"
+                                    ),
+                                };
 
                                 report_table.report_list.push(report_text);
                                 has_report = true;
                             }
                         }
                         None => {
-                            // Column "{}" in table "{}" exists in the base database, but not in the target database.
-                            let report_text = format!(
-                                "Column: {base_table_name}.{base_column_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
-                            );
+                            let report_text = match config.current_language {
+                                Language::Korean=>format!(
+                                    "Column: {base_table_name}.{base_column_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
+                                ),
+                                Language::English=>format!(
+                                    "Column: {base_table_name}.{base_column_name} exists in the base database, but not in the target database."
+                                ),
+                            };
 
                             report_table.report_list.push(report_text);
                             has_report = true;
