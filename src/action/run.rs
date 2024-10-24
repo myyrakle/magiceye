@@ -284,10 +284,14 @@ pub async fn execute(flags: CommandFlags) {
                 }
             }
             None => {
-                // Table "{}" exists in the base database, but not in the target database.
-                let report_text = format!(
-                    "Table: {base_table_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
-                );
+                let report_text = match config.current_language {
+                    Language::Korean=>format!(
+                        "Table: {base_table_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
+                    ),
+                    Language::English=>format!(
+                        "Table: {base_table_name} exists in the base database, but not in the target database."
+                    ),
+                };
 
                 report_table.report_list.push(report_text);
                 has_report = true;
