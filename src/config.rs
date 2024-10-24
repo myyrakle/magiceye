@@ -8,10 +8,30 @@ pub enum CheckType {
     IndexOfTable,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Language {
     English,
     Korean,
+}
+
+impl Language {
+    pub fn list() -> Vec<Self> {
+        vec![Self::English, Self::Korean]
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            Self::English => Self::Korean,
+            Self::Korean => Self::English,
+        }
+    }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            Self::English => Self::Korean,
+            Self::Korean => Self::English,
+        }
+    }
 }
 
 impl Default for Language {

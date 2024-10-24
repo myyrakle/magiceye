@@ -3,7 +3,7 @@ use std::io;
 use crate::{
     action::{enter_tui, exit_tui},
     command::init::CommandFlags,
-    config::{Config, DatabasePair},
+    config::{Config, DatabasePair, Language},
     platform_specific::{get_config, save_config},
 };
 
@@ -25,7 +25,6 @@ pub async fn execute(flags: CommandFlags) {
 #[derive(Debug, PartialEq, Eq)]
 #[repr(i32)]
 enum Step {
-    #[allow(dead_code)]
     EnterLanguage = 0,
     EnterBaseConnection = 1,
     EnterTargetConnection = 2,
@@ -35,7 +34,7 @@ enum Step {
 
 impl Default for Step {
     fn default() -> Self {
-        Self::EnterBaseConnection
+        Self::EnterLanguage
     }
 }
 
@@ -81,6 +80,8 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
         .unwrap_or_default()
         .target_connection;
 
+    let mut current_language = config.current_language.clone();
+
     let mut stacked_text = String::new();
     let mut render_text = String::new();
 
@@ -90,7 +91,18 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
 
         // 스텝별 전처리
         match step {
-            Step::EnterLanguage => {}
+            Step::EnterLanguage => {
+                render_text.push_str("▶ Select Language");
+
+                for language in Language::list() {
+                    render_text.push_str("\n");
+                    render_text.push_str(format!("  - {language:?}").as_str());
+
+                    if language == current_language {
+                        render_text.push_str(" ◀");
+                    }
+                }
+            }
             Step::EnterBaseConnection => {
                 render_text.push_str("▶ Enter Base Connection URL: ");
                 render_text.push_str(&base_connection);
@@ -106,6 +118,7 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                     base_connection: base_connection.clone(),
                     target_connection: target_connection.clone(),
                 });
+                config.current_language = current_language.clone();
 
                 log::debug!("new config: {:?}", config);
 
@@ -138,15 +151,21 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                 if key.kind == KeyEventKind::Press {
                     match step {
                         Step::EnterLanguage => match key.code {
-                            // KeyCode::Char('q') => {
-                            //     break;
-                            // }
-                            // KeyCode::Esc => {
-                            //     break;
-                            // }
-                            // KeyCode::Enter => {
-                            //     step = step.next();
-                            // }
+                            KeyCode::Down => {
+                                current_language = current_language.next();
+                            }
+                            KeyCode::Up => {
+                                current_language = current_language.prev();
+                            }
+                            KeyCode::Esc | KeyCode::Char('q') => {
+                                break;
+                            }
+                            KeyCode::Enter => {
+                                step = step.next();
+
+                                stacked_text
+                                    .push_str(format!("Language: {current_language:?}\n").as_str());
+                            }
                             _ => {}
                         },
                         Step::EnterBaseConnection => match key.code {
