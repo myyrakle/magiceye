@@ -58,9 +58,11 @@ pub async fn execute(flags: CommandFlags) {
     };
 
     // 3. base 테이블 목록을 조회합니다.
+    println!(">> fetching base table list...");
     let base_table_list = get_table_list(&base_connection_pool).await;
 
     // 해당 테이블별 상세 목록을 조회합니다.
+    println!(">> fetching base table details...");
     let mut base_table_map = HashMap::new();
 
     for table_name in base_table_list {
@@ -70,11 +72,13 @@ pub async fn execute(flags: CommandFlags) {
     }
 
     // 4. 대상 테이블 목록을 조회합니다.
+    println!(">> fetching target table list...");
     let target_table_list = get_table_list(&target_connection_pool).await;
 
     // 해당 테이블별 상세 목록을 조회합니다.
     let mut target_table_map = HashMap::new();
 
+    println!(">> fetching target table details...");
     for table_name in target_table_list {
         let target_table = describe_table(&target_connection_pool, &table_name).await;
 
