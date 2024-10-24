@@ -1,16 +1,15 @@
 [package]
 name = "magiceye"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 license = "MIT"
 authors = ["myyrakle <sssang97@naver.com>"] 
-description = "magic eye" 
-keywords = ["rdb"] 
+description = "table diff checker" 
+keywords = ["rdb", "diff", "postgres"] 
 readme = "./README.md"
 repository = "https://github.com/myyrakle/magiceye" 
 documentation = "https://docs.rs/magiceye/latest/magiceye" 
 homepage = "https://github.com/myyrakle/magiceye/blob/master/README.md" 
-
 
 [dependencies]
 clap = { version = "4.4.18", features = ["derive"] }
