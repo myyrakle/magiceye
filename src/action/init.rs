@@ -1,4 +1,4 @@
-use std::{io, thread};
+use std::io;
 
 use crate::{
     action::{enter_tui, exit_tui},
@@ -25,6 +25,7 @@ pub async fn execute(flags: CommandFlags) {
 #[derive(Debug, PartialEq, Eq)]
 #[repr(i32)]
 enum Step {
+    #[allow(dead_code)]
     EnterLanguage = 0,
     EnterBaseConnection = 1,
     EnterTargetConnection = 2,
@@ -58,8 +59,6 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
         disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
     };
     use crossterm::ExecutableCommand;
-    use ratatui::backend::CrosstermBackend;
-    use ratatui::Terminal;
     use ratatui::{
         style::{Color, Style},
         widgets::{Block, BorderType, Borders, Paragraph},
@@ -67,10 +66,6 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
 
     stdout().execute(EnterAlternateScreen).unwrap();
     enable_raw_mode().unwrap();
-
-    let backend = CrosstermBackend::new(stdout());
-
-    let mut terminal = Terminal::new(backend).unwrap();
 
     let mut step = Step::default();
 
