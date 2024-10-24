@@ -156,8 +156,11 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                             KeyCode::Esc => {
                                 break;
                             }
-                            KeyCode::Backspace | KeyCode::Delete => {
+                            KeyCode::Backspace => {
                                 base_connection.pop();
+                            }
+                            KeyCode::Delete => {
+                                base_connection.clear();
                             }
                             KeyCode::Enter => {
                                 step = step.next();
@@ -175,8 +178,11 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                             KeyCode::Esc => {
                                 break;
                             }
-                            KeyCode::Backspace | KeyCode::Delete => {
+                            KeyCode::Backspace => {
                                 target_connection.pop();
+                            }
+                            KeyCode::Delete => {
+                                target_connection.clear();
                             }
                             KeyCode::Enter => {
                                 step = step.next();
