@@ -49,6 +49,8 @@ pub async fn execute(flags: CommandFlags) {
         }
     };
 
+    println!(">> connected to base database");
+
     let target_connection_pool = match target_connection_pool {
         Ok(pool) => pool,
         Err(error) => {
@@ -56,6 +58,8 @@ pub async fn execute(flags: CommandFlags) {
             return;
         }
     };
+
+    println!(">> connected to target database");
 
     // 3. base 테이블 목록을 조회합니다.
     println!(">> fetching base table list...");
