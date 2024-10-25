@@ -125,7 +125,7 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
     .expect("Failed to fetch column list");
 
     let table_comment = query_result
-        .get(0)
+        .first()
         .map(|(comment,)| comment.to_owned())
         .unwrap_or_default();
 
