@@ -3,7 +3,7 @@ use std::io;
 use crate::{
     action::{enter_tui, exit_tui},
     command::init::CommandFlags,
-    config::{Config, DatabasePair, Language},
+    config::{Config, DatabasePair, DatabaseType, Language},
     platform_specific::{get_config, save_config},
 };
 
@@ -100,7 +100,16 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
         // 스텝별 전처리
         match step {
             Step::EnterDatabaseType => {
-                unimplemented!();
+                render_text.push_str("▶ Select Database Type");
+
+                for database_type in DatabaseType::list() {
+                    render_text.push_str("\n");
+                    render_text.push_str(format!("  - {database_type:?}").as_str());
+
+                    if database_type == current_databse_type {
+                        render_text.push_str(" ◀");
+                    }
+                }
             }
             Step::EnterLanguage => {
                 render_text.push_str("▶ Select Language");
