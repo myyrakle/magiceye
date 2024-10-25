@@ -43,6 +43,7 @@ impl Default for Language {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum DatabaseType {
     Postgres,
+    Mysql,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
