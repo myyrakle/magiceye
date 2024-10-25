@@ -91,21 +91,10 @@ impl Default for DatabasePair {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Config {
     pub database_pairs: Vec<DatabasePair>,
     pub default_database_pair: Option<DatabasePair>,
     pub current_language: Language,
     pub ignore_list: Vec<CheckType>,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            database_pairs: vec![],
-            current_language: Language::default(),
-            default_database_pair: None,
-            ignore_list: vec![],
-        }
-    }
 }

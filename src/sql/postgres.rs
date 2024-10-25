@@ -125,7 +125,7 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
     .expect("Failed to fetch column list");
 
     let table_comment = query_result
-        .get(0)
+        .first()
         .map(|(comment,)| comment.to_owned())
         .unwrap_or_default();
 
@@ -166,17 +166,15 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         .map(|(name, columns, is_unique, predicate)| Index {
             name,
             columns: columns.split(',').map(|s| s.to_string()).collect(),
-            is_unique: is_unique,
-            predicate: predicate,
+            is_unique,
+            predicate,
         })
         .collect();
 
-    let table = Table {
+    Table {
         name: table_name.to_string(),
         comment: table_comment,
         columns,
         indexes,
-    };
-
-    table
+    }
 }
