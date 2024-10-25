@@ -46,6 +46,12 @@ pub enum DatabaseType {
     Mysql,
 }
 
+impl Default for DatabaseType {
+    fn default() -> Self {
+        Self::Postgres
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DatabasePair {
     pub name: String,
