@@ -171,12 +171,10 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         })
         .collect();
 
-    let table = Table {
+    Table {
         name: table_name.to_string(),
         comment: table_comment,
         columns,
         indexes,
-    };
-
-    table
+    }
 }
