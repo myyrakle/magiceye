@@ -40,9 +40,36 @@ impl Default for Language {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum DatabaseType {
     Postgres,
+    Mysql,
+}
+
+impl DatabaseType {
+    pub fn list() -> Vec<Self> {
+        vec![Self::Postgres, Self::Mysql]
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            Self::Postgres => Self::Mysql,
+            Self::Mysql => Self::Postgres,
+        }
+    }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            Self::Postgres => Self::Mysql,
+            Self::Mysql => Self::Postgres,
+        }
+    }
+}
+
+impl Default for DatabaseType {
+    fn default() -> Self {
+        Self::Postgres
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -3,7 +3,7 @@ use std::io;
 use crate::{
     action::{enter_tui, exit_tui},
     command::init::CommandFlags,
-    config::{Config, DatabasePair, Language},
+    config::{Config, DatabasePair, DatabaseType, Language},
     platform_specific::{get_config, save_config},
 };
 
@@ -25,22 +25,24 @@ pub async fn execute(flags: CommandFlags) {
 #[derive(Debug, PartialEq, Eq)]
 #[repr(i32)]
 enum Step {
-    EnterLanguage = 0,
-    EnterBaseConnection = 1,
-    EnterTargetConnection = 2,
-    PostProcess = 3,
-    Finished = 4,
+    EnterDatabaseType = 0,
+    EnterLanguage,
+    EnterBaseConnection,
+    EnterTargetConnection,
+    PostProcess,
+    Finished,
 }
 
 impl Default for Step {
     fn default() -> Self {
-        Self::EnterLanguage
+        Self::EnterDatabaseType
     }
 }
 
 impl Step {
     fn next(&self) -> Self {
         match self {
+            Self::EnterDatabaseType => Self::EnterLanguage,
             Self::EnterLanguage => Self::EnterBaseConnection,
             Self::EnterBaseConnection => Self::EnterTargetConnection,
             Self::EnterTargetConnection => Self::PostProcess,
@@ -80,6 +82,12 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
         .unwrap_or_default()
         .target_connection;
 
+    let mut current_databse_type = config
+        .default_database_pair
+        .clone()
+        .unwrap_or_default()
+        .database_type;
+
     let mut current_language = config.current_language.clone();
 
     let mut stacked_text = String::new();
@@ -91,6 +99,18 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
 
         // 스텝별 전처리
         match step {
+            Step::EnterDatabaseType => {
+                render_text.push_str("▶ Select Database Type");
+
+                for database_type in DatabaseType::list() {
+                    render_text.push_str("\n");
+                    render_text.push_str(format!("  - {database_type:?}").as_str());
+
+                    if database_type == current_databse_type {
+                        render_text.push_str(" ◀");
+                    }
+                }
+            }
             Step::EnterLanguage => {
                 render_text.push_str("▶ Select Language");
 
@@ -114,7 +134,7 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             Step::PostProcess => {
                 config.default_database_pair = Some(DatabasePair {
                     name: "default".to_string(),
-                    database_type: crate::config::DatabaseType::Postgres,
+                    database_type: current_databse_type.clone(),
                     base_connection: base_connection.clone(),
                     target_connection: target_connection.clone(),
                 });
@@ -150,6 +170,25 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             if let event::Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match step {
+                        Step::EnterDatabaseType => match key.code {
+                            KeyCode::Down => {
+                                current_databse_type = current_databse_type.next();
+                            }
+                            KeyCode::Up => {
+                                current_databse_type = current_databse_type.prev();
+                            }
+                            KeyCode::Esc | KeyCode::Char('q') => {
+                                break;
+                            }
+                            KeyCode::Enter => {
+                                step = step.next();
+
+                                stacked_text.push_str(
+                                    format!("Database Type: {current_databse_type:?}\n").as_str(),
+                                );
+                            }
+                            _ => {}
+                        },
                         Step::EnterLanguage => match key.code {
                             KeyCode::Down => {
                                 current_language = current_language.next();
