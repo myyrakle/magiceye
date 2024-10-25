@@ -95,7 +95,7 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                 render_text.push_str("▶ Select Language");
 
                 for language in Language::list() {
-                    render_text.push_str("\n");
+                    render_text.push('\n');
                     render_text.push_str(format!("  - {language:?}").as_str());
 
                     if language == current_language {
