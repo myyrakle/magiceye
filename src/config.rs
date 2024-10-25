@@ -46,6 +46,26 @@ pub enum DatabaseType {
     Mysql,
 }
 
+impl DatabaseType {
+    pub fn list() -> Vec<Self> {
+        vec![Self::Postgres, Self::Mysql]
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            Self::Postgres => Self::Mysql,
+            Self::Mysql => Self::Postgres,
+        }
+    }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            Self::Postgres => Self::Mysql,
+            Self::Mysql => Self::Postgres,
+        }
+    }
+}
+
 impl Default for DatabaseType {
     fn default() -> Self {
         Self::Postgres
