@@ -166,8 +166,8 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         .map(|(name, columns, is_unique, predicate)| Index {
             name,
             columns: columns.split(',').map(|s| s.to_string()).collect(),
-            is_unique: is_unique,
-            predicate: predicate,
+            is_unique,
+            predicate,
         })
         .collect();
 
