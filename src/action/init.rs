@@ -35,7 +35,7 @@ enum Step {
 
 impl Default for Step {
     fn default() -> Self {
-        Self::EnterLanguage
+        Self::EnterDatabaseType
     }
 }
 
@@ -134,7 +134,7 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             Step::PostProcess => {
                 config.default_database_pair = Some(DatabasePair {
                     name: "default".to_string(),
-                    database_type: crate::config::DatabaseType::Postgres,
+                    database_type: current_databse_type.clone(),
                     base_connection: base_connection.clone(),
                     target_connection: target_connection.clone(),
                 });
@@ -170,9 +170,25 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             if let event::Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match step {
-                        Step::EnterDatabaseType => {
-                            unimplemented!();
-                        }
+                        Step::EnterDatabaseType => match key.code {
+                            KeyCode::Down => {
+                                current_databse_type = current_databse_type.next();
+                            }
+                            KeyCode::Up => {
+                                current_databse_type = current_databse_type.prev();
+                            }
+                            KeyCode::Esc | KeyCode::Char('q') => {
+                                break;
+                            }
+                            KeyCode::Enter => {
+                                step = step.next();
+
+                                stacked_text.push_str(
+                                    format!("Database Type: {current_databse_type:?}\n").as_str(),
+                                );
+                            }
+                            _ => {}
+                        },
                         Step::EnterLanguage => match key.code {
                             KeyCode::Down => {
                                 current_language = current_language.next();
