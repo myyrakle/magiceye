@@ -25,11 +25,12 @@ pub async fn execute(flags: CommandFlags) {
 #[derive(Debug, PartialEq, Eq)]
 #[repr(i32)]
 enum Step {
-    EnterLanguage = 0,
-    EnterBaseConnection = 1,
-    EnterTargetConnection = 2,
-    PostProcess = 3,
-    Finished = 4,
+    EnterDatabaseType = 0,
+    EnterLanguage,
+    EnterBaseConnection,
+    EnterTargetConnection,
+    PostProcess,
+    Finished,
 }
 
 impl Default for Step {
@@ -41,6 +42,7 @@ impl Default for Step {
 impl Step {
     fn next(&self) -> Self {
         match self {
+            Self::EnterDatabaseType => Self::EnterLanguage,
             Self::EnterLanguage => Self::EnterBaseConnection,
             Self::EnterBaseConnection => Self::EnterTargetConnection,
             Self::EnterTargetConnection => Self::PostProcess,
@@ -80,6 +82,12 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
         .unwrap_or_default()
         .target_connection;
 
+    let mut current_databse_type = config
+        .default_database_pair
+        .clone()
+        .unwrap_or_default()
+        .database_type;
+
     let mut current_language = config.current_language.clone();
 
     let mut stacked_text = String::new();
@@ -91,6 +99,9 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
 
         // 스텝별 전처리
         match step {
+            Step::EnterDatabaseType => {
+                unimplemented!();
+            }
             Step::EnterLanguage => {
                 render_text.push_str("▶ Select Language");
 
@@ -150,6 +161,9 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             if let event::Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match step {
+                        Step::EnterDatabaseType => {
+                            unimplemented!();
+                        }
                         Step::EnterLanguage => match key.code {
                             KeyCode::Down => {
                                 current_language = current_language.next();
