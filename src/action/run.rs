@@ -100,11 +100,10 @@ pub async fn execute(flags: CommandFlags) {
     };
 
     let table_count = base_table_map.len();
-    let mut i = 0;
 
     println!(">> table count: {}", table_count);
 
-    for (base_table_name, base_table) in base_table_map {
+    for (i, (base_table_name, base_table)) in base_table_map.into_iter().enumerate() {
         let target_table = target_table_map.get(&base_table_name);
 
         println!(
@@ -317,8 +316,6 @@ pub async fn execute(flags: CommandFlags) {
         if has_report {
             report.report_table_list.push(report_table);
         }
-
-        i += 1;
     }
 
     println!(">> comparison done.");
