@@ -114,7 +114,7 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                 }
 
                 description_text =
-                    "Select the type of database you want to connect to.".to_string();
+                    "Select the type of database you want to connect to.\n".to_string();
             }
             Step::EnterLanguage => {
                 render_text.push_str("▶ Select Language");
@@ -129,7 +129,7 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                 }
 
                 description_text =
-                    "Select the language you want to use for report output.".to_string();
+                    "Select the language you want to use for report output.\n".to_string();
             }
             Step::EnterBaseConnection => {
                 render_text.push_str("▶ Enter Base Connection URL: ");
