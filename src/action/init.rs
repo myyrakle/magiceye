@@ -144,6 +144,18 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             Step::EnterTargetConnection => {
                 render_text.push_str("▶ Enter Target Connection URL: ");
                 render_text.push_str(&target_connection);
+
+                match current_databse_type {
+                    DatabaseType::Postgres => {
+                        description_text =
+                            format!("Enter the full connection URL of the target database. (e.g. postgres://user:password@host:port/dbname)\n");
+
+                        description_text.push_str("");
+                    }
+                    DatabaseType::Mysql => {
+                        // not yet implemented
+                    }
+                }
             }
             Step::PostProcess => {
                 config.default_database_pair = Some(DatabasePair {
