@@ -92,8 +92,10 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
 
     let mut stacked_text = String::new();
     let mut render_text = String::new();
+    let mut description_text = String::new();
 
     loop {
+        description_text.clear();
         render_text.clear();
         render_text.push_str(stacked_text.as_str());
 
@@ -110,6 +112,9 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                         render_text.push_str(" ◀");
                     }
                 }
+
+                description_text =
+                    "Select the type of database you want to connect to.\n".to_string();
             }
             Step::EnterLanguage => {
                 render_text.push_str("▶ Select Language");
@@ -122,14 +127,41 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                         render_text.push_str(" ◀");
                     }
                 }
+
+                description_text =
+                    "Select the language you want to use for report output.\n".to_string();
             }
             Step::EnterBaseConnection => {
                 render_text.push_str("▶ Enter Base Connection URL: ");
                 render_text.push_str(&base_connection);
+
+                match current_databse_type {
+                    DatabaseType::Postgres => {
+                        description_text =
+                            format!("Enter the full connection URL of the base database. (e.g. postgres://user:password@host:port/dbname)\n");
+
+                        description_text.push_str("");
+                    }
+                    DatabaseType::Mysql => {
+                        // not yet implemented
+                    }
+                }
             }
             Step::EnterTargetConnection => {
                 render_text.push_str("▶ Enter Target Connection URL: ");
                 render_text.push_str(&target_connection);
+
+                match current_databse_type {
+                    DatabaseType::Postgres => {
+                        description_text =
+                            format!("Enter the full connection URL of the target database. (e.g. postgres://user:password@host:port/dbname)\n");
+
+                        description_text.push_str("");
+                    }
+                    DatabaseType::Mysql => {
+                        // not yet implemented
+                    }
+                }
             }
             Step::PostProcess => {
                 config.default_database_pair = Some(DatabasePair {
@@ -150,6 +182,16 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             Step::Finished => {
                 render_text.push_str("\nGoodbye!\n");
             }
+        }
+
+        if !description_text.is_empty() {
+            render_text.push_str("\n\n\n");
+            render_text.push_str("------------ Description ------------\n");
+
+            render_text.push_str(description_text.as_str());
+            render_text.push('\n');
+
+            render_text.push_str("- Press [Enter] to confirm, [ESC] to cancel.");
         }
 
         let block = Block::default()
