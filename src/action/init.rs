@@ -127,6 +127,9 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                         render_text.push_str(" ◀");
                     }
                 }
+
+                description_text =
+                    "Select the language you want to use for report output.".to_string();
             }
             Step::EnterBaseConnection => {
                 render_text.push_str("▶ Enter Base Connection URL: ");
