@@ -128,6 +128,18 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             Step::EnterBaseConnection => {
                 render_text.push_str("▶ Enter Base Connection URL: ");
                 render_text.push_str(&base_connection);
+
+                match current_databse_type {
+                    DatabaseType::Postgres => {
+                        description_text =
+                            format!("Enter the full connection URL of the base database. (e.g. postgres://user:password@host:port/dbname)\n");
+
+                        description_text.push_str("");
+                    }
+                    DatabaseType::Mysql => {
+                        // not yet implemented
+                    }
+                }
             }
             Step::EnterTargetConnection => {
                 render_text.push_str("▶ Enter Target Connection URL: ");
@@ -155,7 +167,11 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
         }
 
         if !description_text.is_empty() {
-            render_text.push_str("\n\n");
+            render_text.push_str("\n\n\n");
+            render_text.push_str("------------ Description ------------\n");
+
+            render_text.push_str(description_text.as_str());
+            render_text.push('\n');
 
             render_text.push_str("- Press [Enter] to confirm, [ESC] to cancel.");
         }
