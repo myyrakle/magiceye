@@ -92,8 +92,10 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
 
     let mut stacked_text = String::new();
     let mut render_text = String::new();
+    let mut description_text = String::new();
 
     loop {
+        description_text.clear();
         render_text.clear();
         render_text.push_str(stacked_text.as_str());
 
@@ -150,6 +152,12 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
             Step::Finished => {
                 render_text.push_str("\nGoodbye!\n");
             }
+        }
+
+        if !description_text.is_empty() {
+            render_text.push_str("\n\n");
+
+            render_text.push_str("- Press [Enter] to confirm, [ESC] to cancel.");
         }
 
         let block = Block::default()
