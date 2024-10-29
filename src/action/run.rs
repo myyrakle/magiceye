@@ -6,7 +6,10 @@ use crate::{
     command::run::CommandFlags,
     config::Language,
     platform_specific::get_config,
-    sql::postgres::{describe_table, get_connection_pool, get_table_list},
+    sql::{
+        postgres::{self, describe_table, get_connection_pool, get_table_list},
+        ConnectionPool,
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,28 +67,41 @@ pub async fn execute(flags: CommandFlags) {
 
     // 3. base 테이블 목록을 조회합니다.
     println!(">> fetching base table list...");
-    let base_table_list = get_table_list(&base_connection_pool).await;
+    let base_table_list = match base_connection_pool {
+        ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
+        ConnectionPool::MySQL(ref pool) => unimplemented!("MySQL is not supported yet"),
+    };
 
     // 해당 테이블별 상세 목록을 조회합니다.
     println!(">> fetching base table details...");
     let mut base_table_map = HashMap::new();
 
     for table_name in base_table_list {
-        let base_table = describe_table(&base_connection_pool, &table_name).await;
+        let base_table = match base_connection_pool {
+            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
+            ConnectionPool::MySQL(ref pool) => unimplemented!("MySQL is not supported yet"),
+        };
 
         base_table_map.insert(table_name, base_table);
     }
 
     // 4. 대상 테이블 목록을 조회합니다.
     println!(">> fetching target table list...");
-    let target_table_list = get_table_list(&target_connection_pool).await;
+
+    let target_table_list = match target_connection_pool {
+        ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
+        ConnectionPool::MySQL(ref pool) => unimplemented!("MySQL is not supported yet"),
+    };
 
     // 해당 테이블별 상세 목록을 조회합니다.
     let mut target_table_map = HashMap::new();
 
     println!(">> fetching target table details...");
     for table_name in target_table_list {
-        let target_table = describe_table(&target_connection_pool, &table_name).await;
+        let target_table = match target_connection_pool {
+            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
+            ConnectionPool::MySQL(ref pool) => unimplemented!("MySQL is not supported yet"),
+        };
 
         target_table_map.insert(table_name, target_table);
     }

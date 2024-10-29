@@ -2,6 +2,12 @@ pub mod mysql;
 pub mod postgres;
 
 #[derive(Debug)]
+pub enum ConnectionPool {
+    Postgres(sqlx::Pool<sqlx::Postgres>),
+    MySQL(sqlx::Pool<sqlx::MySql>),
+}
+
+#[derive(Debug)]
 pub struct Column {
     pub name: String,
     pub data_type: String,

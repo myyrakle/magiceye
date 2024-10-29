@@ -2,7 +2,7 @@ use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
 use crate::sql::{Column, Index};
 
-use super::Table;
+use super::{ConnectionPool, Table};
 
 pub async fn ping(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     pool.acquire().await?;
@@ -10,13 +10,13 @@ pub async fn ping(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn get_connection_pool(connection_url: &str) -> Result<Pool<Postgres>, sqlx::Error> {
+pub async fn get_connection_pool(connection_url: &str) -> Result<ConnectionPool, sqlx::Error> {
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(connection_url)
         .await?;
 
-    Ok(pool)
+    Ok(ConnectionPool::Postgres(pool))
 }
 
 pub async fn get_table_list(pool: &Pool<Postgres>) -> Vec<String> {
