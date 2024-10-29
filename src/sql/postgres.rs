@@ -84,6 +84,7 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
                 default,
                 nullable: nullable == "YES",
                 comment,
+                ..Default::default()
             },
         )
         .collect();
