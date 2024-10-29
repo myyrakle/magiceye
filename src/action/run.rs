@@ -87,7 +87,7 @@ pub async fn execute(flags: CommandFlags) {
     for table_name in base_table_list {
         let base_table = match base_connection_pool {
             ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
-            ConnectionPool::MySQL(ref pool) => unimplemented!("MySQL is not supported yet"),
+            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, &table_name).await,
         };
 
         base_table_map.insert(table_name, base_table);
@@ -108,7 +108,7 @@ pub async fn execute(flags: CommandFlags) {
     for table_name in target_table_list {
         let target_table = match target_connection_pool {
             ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
-            ConnectionPool::MySQL(ref pool) => unimplemented!("MySQL is not supported yet"),
+            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, &table_name).await,
         };
 
         target_table_map.insert(table_name, target_table);
