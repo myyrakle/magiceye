@@ -1,5 +1,9 @@
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
+use crate::sql::{Column, Index};
+
+use super::Table;
+
 pub async fn ping(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     pool.acquire().await?;
 
@@ -31,31 +35,6 @@ pub async fn get_table_list(pool: &Pool<Postgres>) -> Vec<String> {
         .into_iter()
         .map(|(table_name,)| table_name)
         .collect()
-}
-
-#[derive(Debug)]
-pub struct Column {
-    pub name: String,
-    pub data_type: String,
-    pub default: String,
-    pub nullable: bool,
-    pub comment: String,
-}
-
-#[derive(Debug)]
-pub struct Index {
-    pub name: String,
-    pub columns: Vec<String>,
-    pub predicate: String,
-    pub is_unique: bool,
-}
-
-#[derive(Debug)]
-pub struct Table {
-    pub name: String,
-    pub comment: String,
-    pub columns: Vec<Column>,
-    pub indexes: Vec<Index>,
 }
 
 fn format_type(data_type: &str, character_maximum_length: i32) -> String {
