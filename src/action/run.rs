@@ -4,12 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     command::run::CommandFlags,
-    config::Language,
+    config::{DatabaseType, Language},
     platform_specific::get_config,
-    sql::{
-        postgres::{self, describe_table, get_connection_pool, get_table_list},
-        ConnectionPool,
-    },
+    sql::{mysql, postgres, ConnectionPool},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,32 +40,38 @@ pub async fn execute(flags: CommandFlags) {
     let target_connection_url = database_pair.target_connection.as_str();
 
     println!(">> connecting to base databases...");
-    let base_connection_pool = get_connection_pool(base_connection_url).await;
-    println!(">> connected to base database");
+    let base_connection_pool = match database_pair.database_type {
+        DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
+        DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
+    };
 
     println!(">> connecting to target databases...");
-    let target_connection_pool = get_connection_pool(target_connection_url).await;
-    println!(">> connected to target database");
+    let target_connection_pool = match database_pair.database_type {
+        DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
+        DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
+    };
 
     let base_connection_pool = match base_connection_pool {
-        Ok(pool) => pool,
+        Ok(pool) => {
+            println!(">> connected to base database");
+            pool
+        }
         Err(error) => {
             println!("failed to connect to base database: {:?}", error);
             return;
         }
     };
 
-    println!(">> connected to base database");
-
     let target_connection_pool = match target_connection_pool {
-        Ok(pool) => pool,
+        Ok(pool) => {
+            println!(">> connected to target database");
+            pool
+        }
         Err(error) => {
             println!("failed to connect to target database: {:?}", error);
             return;
         }
     };
-
-    println!(">> connected to target database");
 
     // 3. base 테이블 목록을 조회합니다.
     println!(">> fetching base table list...");

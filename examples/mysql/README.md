@@ -11,7 +11,7 @@ run
 magiceye init
 # ...
 Enter Base Connection URL: mysql://root:q1w2e3r4@127.0.0.1:44444/prod
-Enter Target Connection URL: mysql://root:q1w2e3r4@27.0.0.1:44444/dev
+Enter Target Connection URL: mysql://root:q1w2e3r4@127.0.0.1:44444/dev
 # ...
 
 magiceye run
