@@ -7,13 +7,14 @@ pub enum ConnectionPool {
     MySQL(sqlx::Pool<sqlx::MySql>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Column {
     pub name: String,
     pub data_type: String,
     pub default: String,
     pub nullable: bool,
     pub comment: String,
+    pub is_auto_increment: bool, // MYSQL Only
 }
 
 #[derive(Debug)]
