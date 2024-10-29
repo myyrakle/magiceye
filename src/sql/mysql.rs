@@ -35,13 +35,14 @@ pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> Table {
     log::debug!("describe table: {table_name}");
 
     // 1. 컬럼 리스트 정보 조회
-    let query_result = sqlx::query_as::<_, (String, String, String, i32, String)>(
+    let query_result = sqlx::query_as::<_, (String, String, String, i32, String, String)>(
         r#"
         SELECT 
             column_name, 
             column_type, 
             coalesce(column_default, ''), is_nullable = 'YES',
-            column_comment
+            column_comment, 
+            coalesce(extra, '')
         FROM 
             information_schema.columns
         WHERE 
@@ -56,13 +57,16 @@ pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> Table {
 
     let columns = query_result
         .into_iter()
-        .map(|(name, data_type, default, nullable, comment)| Column {
-            name,
-            data_type: data_type,
-            default,
-            nullable: nullable == 1,
-            comment,
-        })
+        .map(
+            |(name, data_type, default, nullable, comment, extra)| Column {
+                name,
+                data_type: data_type,
+                default,
+                nullable: nullable == 1,
+                comment,
+                is_auto_increment: extra.contains("auto_increment"),
+            },
+        )
         .collect();
 
     // 2. 테이블에 속한 인덱스 목록 조회

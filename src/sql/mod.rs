@@ -14,6 +14,7 @@ pub struct Column {
     pub default: String,
     pub nullable: bool,
     pub comment: String,
+    pub is_auto_increment: bool, // MYSQL Only
 }
 
 #[derive(Debug)]
