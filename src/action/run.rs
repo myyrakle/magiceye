@@ -42,8 +42,13 @@ pub async fn execute(flags: CommandFlags) {
     let base_connection_url = database_pair.base_connection.as_str();
     let target_connection_url = database_pair.target_connection.as_str();
 
+    println!(">> connecting to base databases...");
     let base_connection_pool = get_connection_pool(base_connection_url).await;
+    println!(">> connected to base database");
+
+    println!(">> connecting to target databases...");
     let target_connection_pool = get_connection_pool(target_connection_url).await;
+    println!(">> connected to target database");
 
     let base_connection_pool = match base_connection_pool {
         Ok(pool) => pool,
