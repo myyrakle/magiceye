@@ -223,6 +223,31 @@ pub async fn execute(flags: CommandFlags) {
                                 report_table.report_list.push(report_text);
                                 has_report = true;
                             }
+
+                            if column.is_auto_increment != target_column.is_auto_increment {
+                                let base_auto_increment = if column.is_auto_increment {
+                                    "AUTO_INCREMENT"
+                                } else {
+                                    "NOT AUTO_INCREMENT"
+                                };
+                                let target_auto_increment = if target_column.is_auto_increment {
+                                    "AUTO_INCREMENT"
+                                } else {
+                                    "NOT AUTO_INCREMENT"
+                                };
+
+                                let report_text = match config.current_language {
+                                    Language::Korean=>format!( 
+                                        "Column: {base_table_name}.{base_column_name}의 AUTO_INCREMENT 여부가 다릅니다. => {base_auto_increment} != {target_auto_increment}"
+                                    ),
+                                    Language::English=>format!(
+                                        "Column: {base_table_name}.{base_column_name} has different AUTO_INCREMENT. => {base_auto_increment} != {target_auto_increment}"
+                                    ),
+                                };
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
                         }
                         None => {
                             let report_text = match config.current_language {
