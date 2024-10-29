@@ -1,3 +1,4 @@
+pub mod mysql;
 pub mod postgres;
 
 #[derive(Debug)]
