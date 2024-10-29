@@ -77,7 +77,7 @@ pub async fn execute(flags: CommandFlags) {
     println!(">> fetching base table list...");
     let base_table_list = match base_connection_pool {
         ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
-        ConnectionPool::MySQL(ref pool) => unimplemented!("MySQL is not supported yet"),
+        ConnectionPool::MySQL(ref pool) => mysql::get_table_list(pool).await,
     };
 
     // 해당 테이블별 상세 목록을 조회합니다.
@@ -98,7 +98,7 @@ pub async fn execute(flags: CommandFlags) {
 
     let target_table_list = match target_connection_pool {
         ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
-        ConnectionPool::MySQL(ref pool) => unimplemented!("MySQL is not supported yet"),
+        ConnectionPool::MySQL(ref pool) => mysql::get_table_list(pool).await,
     };
 
     // 해당 테이블별 상세 목록을 조회합니다.
