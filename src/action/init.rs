@@ -143,7 +143,10 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                         description_text.push_str("");
                     }
                     DatabaseType::Mysql => {
-                        // not yet implemented
+                        description_text = 
+                            format!("Enter the full connection URL of the base database. (e.g. mysql://user:password@host:port/dbname)\n");
+                        
+                        description_text.push_str("");
                     }
                 }
             }
@@ -159,7 +162,10 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                         description_text.push_str("");
                     }
                     DatabaseType::Mysql => {
-                        // not yet implemented
+                        description_text = 
+                            format!("Enter the full connection URL of the target database. (e.g. mysql://user:password@host:port/dbname)\n");
+                        
+                        description_text.push_str("");
                     }
                 }
             }
