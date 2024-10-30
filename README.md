@@ -1,8 +1,8 @@
 # magiceye
 
-![](https://img.shields.io/badge/language-Rust-red) ![](https://img.shields.io/badge/version-0.1.0-brightgreen) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/myyrakle/magiceye/blob/master/LICENSE)
+![](https://img.shields.io/badge/language-Rust-red) ![](https://img.shields.io/badge/version-0.2.0-brightgreen) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/myyrakle/magiceye/blob/master/LICENSE)
 
-- table diff checker
+- database diff checker
 
 ## What is this?
 
@@ -42,7 +42,8 @@ When processing is complete, a report file is created in the form "2024-01-30 18
 
 ## Supported DBMS
 
-- postgresql only
+- postgresql
+- mysql
 
 ## Supported Report Language
 
