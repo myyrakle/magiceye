@@ -97,3 +97,8 @@ CREATE INDEX "idx_post_tag_post_id" ON post_tags (post_id);
 CREATE INDEX "idx_post_tag_tag_id" ON post_tags (tag_id);
 CREATE INDEX "idx_like_user_id" ON likes (user_id);
 CREATE INDEX "idx_like_post_id" ON likes (post_id);
+
+CREATE TABLE key_values (
+  key SERIAL PRIMARY KEY,
+  value TEXT NOT NULL
+);

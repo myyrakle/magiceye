@@ -95,3 +95,8 @@ CREATE INDEX "idx_comment_post_id" ON comments (post_id) where post_id is not nu
 CREATE INDEX "idx_post_tag_post_id" ON post_tags (post_id);
 CREATE INDEX "idx_post_tag_tag_id" ON post_tags (tag_id);
 CREATE INDEX "idx_like_user_id" ON likes (user_id);
+
+CREATE TABLE key_values (
+  key SERIAL,
+  value TEXT NOT NULL
+);
