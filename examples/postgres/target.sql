@@ -46,7 +46,7 @@ CREATE TABLE followers (
 
 CREATE TABLE notifications (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
+  user_id INTEGER,
   message TEXT NOT NULL
 );
 
