@@ -156,5 +156,6 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         comment: table_comment,
         columns,
         indexes,
+        ..Default::default()
     }
 }

@@ -26,9 +26,28 @@ pub struct Index {
 }
 
 #[derive(Debug)]
+pub struct ForeignKey {
+    pub name: String,
+    pub column: Vec<String>,
+    pub foreign_column: Option<SelectColumn>,
+}
+
+#[derive(Debug)]
+pub enum Constraint {
+    ForeignKey(ForeignKey),
+}
+
+#[derive(Debug)]
+pub struct SelectColumn {
+    pub table_name: String,
+    pub column_name: String,
+}
+
+#[derive(Debug, Default)]
 pub struct Table {
     pub name: String,
     pub comment: String,
     pub columns: Vec<Column>,
     pub indexes: Vec<Index>,
+    pub constraints: Vec<Constraint>,
 }

@@ -107,5 +107,6 @@ pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> Table {
         comment: "".to_string(), // TODO: 테이블 comment 조회
         columns,
         indexes,
+        ..Default::default()
     }
 }
