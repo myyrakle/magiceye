@@ -32,6 +32,12 @@ pub struct ForeignKey {
     pub foreign_column: Option<SelectColumn>,
 }
 
+impl From<ForeignKey> for Constraint {
+    fn from(fk: ForeignKey) -> Self {
+        Constraint::ForeignKey(fk)
+    }
+}
+
 #[derive(Debug)]
 pub enum Constraint {
     ForeignKey(ForeignKey),
