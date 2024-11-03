@@ -102,3 +102,10 @@ CREATE TABLE key_values (
   key SERIAL PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE reports_fk_test (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  post_id INTEGER REFERENCES posts(id),
+  reason TEXT NOT NULL
+);

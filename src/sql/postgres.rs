@@ -1,6 +1,6 @@
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
-use crate::sql::{Column, Index};
+use crate::sql::{Column, ForeignKey, Index};
 
 use super::{ConnectionPool, Table};
 
@@ -151,10 +151,52 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         })
         .collect();
 
+    let mut constraints = vec![];
+
+    // 4. 테이블에 속한 외래키 목록 조회
+    let query_result = sqlx::query_as::<_, (String, String, String, String)>(
+        r#"
+            SELECT
+                tc.constraint_name,
+                kcu.column_name,
+                ccu.table_name AS foreign_table_name,
+                ccu.column_name AS foreign_column_name
+            FROM
+                information_schema.table_constraints AS tc
+                JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+                JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+            WHERE
+                tc.constraint_type = 'FOREIGN KEY'
+                AND tc.table_name = $1;
+        "#,
+    )
+    .bind(table_name)
+    .fetch_all(pool)
+    .await
+    .expect("Failed to fetch foreign key list");
+
+    for (name, column, foreign_table_name, foreign_column_name) in query_result {
+        constraints.push(
+            ForeignKey {
+                name,
+                column: vec![column],
+                foreign_column: super::SelectColumn {
+                    table_name: foreign_table_name,
+                    column_name: foreign_column_name,
+                },
+            }
+            .into(),
+        );
+    }
+
     Table {
         name: table_name.to_string(),
         comment: table_comment,
         columns,
         indexes,
+        constraints,
     }
 }
