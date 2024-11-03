@@ -144,10 +144,10 @@ pub async fn execute(flags: CommandFlags) {
 
         match target_table {
             Some(target_table) => {
-                for column in base_table.columns {
+                for column in &base_table.columns {
                     let target_column = target_table.columns.iter().find(|c| c.name == column.name);
 
-                    let base_column_name = column.name;
+                    let base_column_name = &column.name;
 
                     match target_column {
                         Some(target_column) => {
@@ -265,7 +265,7 @@ pub async fn execute(flags: CommandFlags) {
                     }
                 }
 
-                for index in base_table.indexes {
+                for index in &base_table.indexes {
                     let target_index = target_table.indexes.iter().find(|i| i.name == index.name);
 
                     let base_index_name = &index.name;
@@ -346,6 +346,36 @@ pub async fn execute(flags: CommandFlags) {
                         }
                     }
                 }
+
+                for foreign_key in base_table.foreign_keys() {
+                    let target_foreign_keys = target_table.foreign_keys();
+
+                    let target_foreign_key = target_foreign_keys.iter().find(|fk| {
+                        fk.name == foreign_key.name
+                            && fk.column == foreign_key.column
+                            && fk.foreign_column == foreign_key.foreign_column
+                    });
+
+                    let base_foreign_key_name = &foreign_key.name;
+
+                    match target_foreign_key {
+                        Some(_) => {
+                        }, 
+                        None => {
+                            let report_text = match config.current_language {
+                                Language::English=>format!(
+                                    "Foreign Key: {base_table_name}.{base_foreign_key_name} exists in the base database, but not in the target database."
+                                ),
+                                Language::Korean=>format!(
+                                    "Foreign Key: {base_table_name}.{base_foreign_key_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
+                                ),
+                            };
+
+                            report_table.report_list.push(report_text);
+                            has_report = true;
+                        }
+                    }
+                } 
             }
             None => {
                 let report_text = match config.current_language {

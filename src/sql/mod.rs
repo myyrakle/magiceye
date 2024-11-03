@@ -25,7 +25,7 @@ pub struct Index {
     pub is_unique: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ForeignKey {
     pub name: String,
     pub column: Vec<String>,
@@ -43,7 +43,7 @@ pub enum Constraint {
     ForeignKey(ForeignKey),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct SelectColumn {
     pub table_name: String,
     pub column_name: String,
@@ -56,4 +56,24 @@ pub struct Table {
     pub columns: Vec<Column>,
     pub indexes: Vec<Index>,
     pub constraints: Vec<Constraint>,
+}
+
+// foreign key 관련 메서드
+impl Table {
+    pub fn foreign_keys(&self) -> Vec<&ForeignKey> {
+        self.constraints
+            .iter()
+            .filter_map(|c| match c {
+                Constraint::ForeignKey(fk) => Some(fk),
+                // _ => None,
+            })
+            .collect()
+    }
+
+    pub fn find_foreign_key_by_key_name(&self, key_name: &str) -> Option<&ForeignKey> {
+        self.foreign_keys()
+            .iter()
+            .find(|fk| fk.name == key_name)
+            .cloned()
+    }
 }
