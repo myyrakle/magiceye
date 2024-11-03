@@ -100,3 +100,14 @@ CREATE TABLE key_values (
   key SERIAL,
   value TEXT NOT NULL
 );
+
+CREATE TABLE reports_fk_test (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  post_id INTEGER,
+  reason TEXT NOT NULL
+);
+
+ALTER TABLE reports_fk_test
+ADD CONSTRAINT reports_fk_test_post_id_fkey
+FOREIGN KEY (post_id) REFERENCES messages(id);

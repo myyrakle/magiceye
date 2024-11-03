@@ -348,20 +348,16 @@ pub async fn execute(flags: CommandFlags) {
                 }
 
                 for foreign_key in base_table.foreign_keys() {
-                    let target_foreign_keys = target_table.foreign_keys();
-
-                    let target_foreign_key = target_foreign_keys.iter().find(|fk| {
-                        fk.name == foreign_key.name
-                            && fk.column == foreign_key.column
-                            && fk.foreign_column == foreign_key.foreign_column
-                    });
+                    let target_foreign_key = target_table.find_foreign_key_by_key_name(
+                        &foreign_key.name
+                    );
 
                     let base_foreign_key_name = &foreign_key.name;
 
                     match target_foreign_key {
                         Some(target_foreign_key) => {
                             // 외래키가 참조하는 테이블이 다르면 보고합니다.
-                            if foreign_key.foreign_column != target_foreign_key.foreign_column {
+                          if foreign_key.foreign_column != target_foreign_key.foreign_column {
                                 let base_foreign_table_name = &foreign_key.foreign_column.table_name;
                                 let base_foreign_column_name = &foreign_key.foreign_column.column_name;
 
