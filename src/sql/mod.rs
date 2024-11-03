@@ -29,7 +29,7 @@ pub struct Index {
 pub struct ForeignKey {
     pub name: String,
     pub column: Vec<String>,
-    pub foreign_column: Option<SelectColumn>,
+    pub foreign_column: SelectColumn,
 }
 
 impl From<ForeignKey> for Constraint {

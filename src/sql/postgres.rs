@@ -183,10 +183,10 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
             ForeignKey {
                 name,
                 column: vec![column],
-                foreign_column: Some(super::SelectColumn {
+                foreign_column: super::SelectColumn {
                     table_name: foreign_table_name,
                     column_name: foreign_column_name,
-                }),
+                },
             }
             .into(),
         );

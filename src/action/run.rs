@@ -359,7 +359,27 @@ pub async fn execute(flags: CommandFlags) {
                     let base_foreign_key_name = &foreign_key.name;
 
                     match target_foreign_key {
-                        Some(_) => {
+                        Some(target_foreign_key) => {
+                            // 외래키가 참조하는 테이블이 다르면 보고합니다.
+                            if foreign_key.foreign_column != target_foreign_key.foreign_column {
+                                let base_foreign_table_name = &foreign_key.foreign_column.table_name;
+                                let base_foreign_column_name = &foreign_key.foreign_column.column_name;
+
+                                let target_foreign_table_name = &target_foreign_key.foreign_column.table_name;
+                                let target_foreign_column_name = &target_foreign_key.foreign_column.column_name;
+
+                                let report_text = match config.current_language {
+                                    Language::English=>format!(
+                                        "Foreign Key: {base_table_name}.{base_foreign_key_name} references different column. => {base_foreign_table_name}.{base_foreign_column_name} != {target_foreign_table_name}.{target_foreign_column_name}"
+                                    ),
+                                    Language::Korean=>format!(
+                                        "Foreign Key: {base_table_name}.{base_foreign_key_name}의 참조 컬럼이 다릅니다. => {base_foreign_table_name}.{base_foreign_column_name} != {target_foreign_table_name}.{target_foreign_column_name}"
+                                    ),
+                                };
+
+                                report_table.report_list.push(report_text);
+                                has_report = true;
+                            }
                         }, 
                         None => {
                             let report_text = match config.current_language {
