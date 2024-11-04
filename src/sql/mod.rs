@@ -60,6 +60,7 @@ pub struct Table {
 
 // foreign key 관련 메서드
 impl Table {
+    #[allow(clippy::unnecessary_filter_map)]
     pub fn foreign_keys(&self) -> Vec<&ForeignKey> {
         self.constraints
             .iter()
