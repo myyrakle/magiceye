@@ -138,13 +138,13 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                 match current_databse_type {
                     DatabaseType::Postgres => {
                         description_text =
-                            format!("Enter the full connection URL of the base database. (e.g. postgres://user:password@host:port/dbname)\n");
+                            "Enter the full connection URL of the base database. (e.g. postgres://user:password@host:port/dbname)\n".into();
 
                         description_text.push_str("");
                     }
                     DatabaseType::Mysql => {
                         description_text = 
-                            format!("Enter the full connection URL of the base database. (e.g. mysql://user:password@host:port/dbname)\n");
+                            "Enter the full connection URL of the base database. (e.g. mysql://user:password@host:port/dbname)\n".into();
                         
                         description_text.push_str("");
                     }
@@ -157,13 +157,13 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                 match current_databse_type {
                     DatabaseType::Postgres => {
                         description_text =
-                            format!("Enter the full connection URL of the target database. (e.g. postgres://user:password@host:port/dbname)\n");
+                            "Enter the full connection URL of the target database. (e.g. postgres://user:password@host:port/dbname)\n".into();
 
                         description_text.push_str("");
                     }
                     DatabaseType::Mysql => {
                         description_text = 
-                            format!("Enter the full connection URL of the target database. (e.g. mysql://user:password@host:port/dbname)\n");
+                            "Enter the full connection URL of the target database. (e.g. mysql://user:password@host:port/dbname)\n".into();
                         
                         description_text.push_str("");
                     }
