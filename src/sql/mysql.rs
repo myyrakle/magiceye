@@ -60,7 +60,7 @@ pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> Table {
         .map(
             |(name, data_type, default, nullable, comment, extra)| Column {
                 name,
-                data_type: data_type,
+                data_type,
                 default,
                 nullable: nullable == 1,
                 comment,
