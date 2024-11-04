@@ -105,7 +105,7 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
                 render_text.push_str("▶ Select Database Type");
 
                 for database_type in DatabaseType::list() {
-                    render_text.push_str("\n");
+                    render_text.push('\n');
                     render_text.push_str(format!("  - {database_type:?}").as_str());
 
                     if database_type == current_databse_type {
