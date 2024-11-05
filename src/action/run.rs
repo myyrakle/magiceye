@@ -102,7 +102,13 @@ async fn get_table_list(
 pub async fn execute(flags: CommandFlags) {
     log::info!("execute action: run");
 
-    let config = get_config();
+    let config = match get_config() {
+        Ok(config) => config,
+        Err(error) => {
+            println!("failed to get config: {:?}", error);
+            return;
+        }
+    };
 
     log::debug!("current config: {:?}", config);
 

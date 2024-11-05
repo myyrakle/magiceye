@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::config::Config;
 
-pub fn get_app_path() -> PathBuf {
+pub fn get_app_path() -> anyhow::Result<PathBuf> {
     let home_dir = std::env::var("HOME").unwrap_or_else(|_| String::from(""));
 
     log::debug!("home_dir: {home_dir}");
@@ -18,49 +18,78 @@ pub fn get_app_path() -> PathBuf {
 
     // Ensure the directory exists
     if !app_data_path.exists() {
-        std::fs::create_dir_all(&app_data_path).expect("Failed to create app data directory");
+        if let Err(error) = std::fs::create_dir_all(&app_data_path) {
+            return Err(anyhow::Error::new(error));
+        }
     }
 
     log::debug!("app_data_path: {app_data_path:?}");
 
-    app_data_path
+    Ok(app_data_path)
 }
 
-pub fn get_config_path() -> PathBuf {
-    let app_data_path = get_app_path();
+pub fn get_config_path() -> anyhow::Result<PathBuf> {
+    let app_data_path = get_app_path()?;
 
     let config_path = app_data_path.join("config.json");
 
     // Ensure the file exists
     if !config_path.exists() {
         let config = Config::default();
-        let config_json =
-            serde_json::to_string_pretty(&config).expect("Failed to serialize config");
+        let config_json = match serde_json::to_string_pretty(&config) {
+            Ok(config_json) => config_json,
+            Err(error) => {
+                return Err(anyhow::Error::new(error));
+            }
+        };
 
-        std::fs::write(&config_path, config_json).expect("Failed to create config file");
+        if let Err(error) = std::fs::write(&config_path, config_json) {
+            return Err(anyhow::Error::new(error));
+        }
     }
 
     log::debug!("config_path: {config_path:?}");
 
-    config_path
+    Ok(config_path)
 }
 
-pub fn get_config() -> Config {
-    let config_path = get_config_path();
+pub fn get_config() -> anyhow::Result<Config> {
+    let config_path = get_config_path()?;
 
-    let config_json = std::fs::read_to_string(&config_path).expect("Failed to read config file");
+    let config_json = match std::fs::read_to_string(&config_path) {
+        Ok(config_json) => config_json,
+        Err(error) => {
+            return Err(anyhow::Error::new(error));
+        }
+    };
 
-    let config: Config = serde_json::from_str(&config_json).expect("Failed to parse config");
+    let config: Config = match serde_json::from_str(&config_json) {
+        Ok(config) => config,
+        Err(error) => {
+            return Err(anyhow::Error::new(error));
+        }
+    };
 
     log::debug!("config: {:?}", config);
 
-    config
+    Ok(config)
 }
 
-pub fn save_config(config: &Config) {
-    let config_path = get_config_path();
+pub fn save_config(config: &Config) -> anyhow::Result<()> {
+    let config_path = get_config_path()?;
 
-    let config_json = serde_json::to_string_pretty(config).expect("Failed to serialize config");
+    let config_json = match serde_json::to_string_pretty(config) {
+        Ok(config_json) => config_json,
+        Err(error) => {
+            return Err(anyhow::anyhow!(
+                "Failed to serialize config, error: {error}"
+            ));
+        }
+    };
 
-    std::fs::write(&config_path, config_json).expect("Failed to save config");
+    if let Err(error) = std::fs::write(&config_path, config_json) {
+        return Err(anyhow::anyhow!("Failed to save config, error: {error}"));
+    }
+
+    Ok(())
 }
