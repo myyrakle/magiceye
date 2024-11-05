@@ -12,7 +12,14 @@ use super::TerminalType;
 pub async fn execute(flags: CommandFlags) {
     log::info!("execute action: init");
 
-    let config = get_config();
+    let config = match get_config() {
+        Ok(config) => config,
+        Err(error) => {
+            log::error!("failed to load config: {:?}", error);
+
+            Config::default()
+        }
+    };
 
     log::debug!("current config: {:?}", config);
 
@@ -180,7 +187,7 @@ fn interactive(terminal: &mut TerminalType, mut config: Config) -> io::Result<()
 
                 log::debug!("new config: {:?}", config);
 
-                save_config(&config);
+                _ = save_config(&config);
                 stacked_text.push_str("\nConfig file saved.\n");
 
                 step = step.next();

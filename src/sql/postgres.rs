@@ -10,7 +10,7 @@ pub async fn ping(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn get_connection_pool(connection_url: &str) -> Result<ConnectionPool, sqlx::Error> {
+pub async fn get_connection_pool(connection_url: &str) -> anyhow::Result<ConnectionPool> {
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(connection_url)
@@ -19,7 +19,7 @@ pub async fn get_connection_pool(connection_url: &str) -> Result<ConnectionPool,
     Ok(ConnectionPool::Postgres(pool))
 }
 
-pub async fn get_table_list(pool: &Pool<Postgres>) -> Vec<String> {
+pub async fn get_table_list(pool: &Pool<Postgres>) -> anyhow::Result<Vec<String>> {
     let table_list = sqlx::query_as::<_, (String,)>(
         r#"
         SELECT table_name
@@ -28,13 +28,12 @@ pub async fn get_table_list(pool: &Pool<Postgres>) -> Vec<String> {
     "#,
     )
     .fetch_all(pool)
-    .await
-    .expect("Failed to fetch table list");
+    .await?;
 
-    table_list
+    Ok(table_list
         .into_iter()
         .map(|(table_name,)| table_name)
-        .collect()
+        .collect())
 }
 
 fn format_type(data_type: &str, character_maximum_length: i32) -> String {
@@ -44,7 +43,7 @@ fn format_type(data_type: &str, character_maximum_length: i32) -> String {
     }
 }
 
-pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
+pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> anyhow::Result<Table> {
     log::debug!("describe table: {table_name}");
 
     // 1. 컬럼 리스트 정보 조회
@@ -72,8 +71,7 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
     )
     .bind(table_name)
     .fetch_all(pool)
-    .await
-    .expect("Failed to fetch column list");
+    .await?;
 
     let columns = query_result
         .into_iter()
@@ -101,8 +99,7 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
     )
     .bind(table_name)
     .fetch_all(pool)
-    .await
-    .expect("Failed to fetch column list");
+    .await?;
 
     let table_comment = query_result
         .first()
@@ -138,8 +135,7 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
     )
     .bind(table_name)
     .fetch_all(pool)
-    .await
-    .expect("Failed to fetch index list");
+    .await?;
 
     let indexes = query_result
         .into_iter()
@@ -175,8 +171,7 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
     )
     .bind(table_name)
     .fetch_all(pool)
-    .await
-    .expect("Failed to fetch foreign key list");
+    .await?;
 
     for (name, column, foreign_table_name, foreign_column_name) in query_result {
         constraints.push(
@@ -192,11 +187,13 @@ pub async fn describe_table(pool: &Pool<Postgres>, table_name: &str) -> Table {
         );
     }
 
-    Table {
+    let table = Table {
         name: table_name.to_string(),
         comment: table_comment,
         columns,
         indexes,
         constraints,
-    }
+    };
+
+    Ok(table)
 }

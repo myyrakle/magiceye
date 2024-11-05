@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     command::run::CommandFlags,
-    config::{DatabaseType, Language},
+    config::{DatabasePair, DatabaseType, Language},
     platform_specific::get_config,
-    sql::{mysql, postgres, ConnectionPool},
+    sql::{mysql, postgres, ConnectionPool, Table},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -20,10 +20,95 @@ struct ReportSchema {
     report_table_list: Vec<ReportTable>,
 }
 
+async fn connect_database(
+    database_pair: &DatabasePair,
+)  -> anyhow::Result<(ConnectionPool, ConnectionPool)> {
+    let base_connection_url = &database_pair.base_connection;
+    let target_connection_url = &database_pair.target_connection;
+    let database_type = &database_pair.database_type;
+
+    println!(">> connecting to base databases...");
+    let base_connection_pool = match database_type {
+        DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
+        DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
+    };
+
+    println!(">> connecting to target databases...");
+    let target_connection_pool = match database_type {
+        DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
+        DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
+    };
+
+    let base_connection_pool = match base_connection_pool {
+        Ok(pool) => {
+            println!(">> connected to base database");
+            pool
+        }
+        Err(error) => {
+           return Err(anyhow::anyhow!("failed to connect to base database: {:?}", error));
+        }
+    };
+
+    let target_connection_pool = match target_connection_pool {
+        Ok(pool) => {
+            println!(">> connected to target database");
+            pool
+        }
+        Err(error) => {
+            return Err(anyhow::anyhow!("failed to connect to target database: {:?}", error));
+        }
+    };
+
+   Ok( (base_connection_pool, target_connection_pool))
+}
+
+async fn get_table_list(
+    connection_pool: &ConnectionPool,
+) ->anyhow::Result<HashMap<String, Table>> {
+    println!(">> fetching table list...");
+    let table_list_result = match connection_pool {
+        ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
+        ConnectionPool::MySQL(ref pool) => mysql::get_table_list(pool).await,
+    };
+
+    let table_list = match table_list_result {
+        Ok(list) => list,
+        Err(error) => {
+            return Err(anyhow::anyhow!("failed to get table list: {:?}", error));
+        }
+    };
+
+    let mut table_map = HashMap::new();
+
+    for table_name in table_list {
+        let table_result = match connection_pool {
+            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
+            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, &table_name).await,
+        };
+
+        let table = match table_result {
+            Ok(table) => table,
+            Err(error) => {
+                return Err(anyhow::anyhow!("failed to describe table: {:?}", error));
+            }
+        };
+
+        table_map.insert(table_name, table);
+    }
+
+    Ok(table_map)
+}
+
 pub async fn execute(flags: CommandFlags) {
     log::info!("execute action: run");
 
-    let config = get_config();
+    let config = match get_config() {
+        Ok(config) => config,
+        Err(error) => {
+            println!("failed to get config: {:?}", error);
+            return;
+        }
+    };
 
     log::debug!("current config: {:?}", config);
 
@@ -36,83 +121,34 @@ pub async fn execute(flags: CommandFlags) {
     };
 
     // 2. 커넥션 정보를 기반으로 실제 데이터베이스에 연결합니다.
-    let base_connection_url = database_pair.base_connection.as_str();
-    let target_connection_url = database_pair.target_connection.as_str();
-
-    println!(">> connecting to base databases...");
-    let base_connection_pool = match database_pair.database_type {
-        DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
-        DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
-    };
-
-    println!(">> connecting to target databases...");
-    let target_connection_pool = match database_pair.database_type {
-        DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
-        DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
-    };
-
-    let base_connection_pool = match base_connection_pool {
-        Ok(pool) => {
-            println!(">> connected to base database");
-            pool
-        }
+    let (base_connection_pool, target_connection_pool) = match connect_database(
+        &database_pair).await {
+        Ok(pools) => pools,
         Err(error) => {
-            println!("failed to connect to base database: {:?}", error);
-            return;
-        }
-    };
-
-    let target_connection_pool = match target_connection_pool {
-        Ok(pool) => {
-            println!(">> connected to target database");
-            pool
-        }
-        Err(error) => {
-            println!("failed to connect to target database: {:?}", error);
+            println!("failed to connect to database: {:?}", error);
             return;
         }
     };
 
     // 3. base 테이블 목록을 조회합니다.
     println!(">> fetching base table list...");
-    let base_table_list = match base_connection_pool {
-        ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
-        ConnectionPool::MySQL(ref pool) => mysql::get_table_list(pool).await,
+    let base_table_map = match get_table_list(&base_connection_pool).await {
+        Ok(map) => map,
+        Err(error) => {
+            println!("failed to get base table list: {:?}", error);
+            return;
+        }
     };
-
-    // 해당 테이블별 상세 목록을 조회합니다.
-    println!(">> fetching base table details...");
-    let mut base_table_map = HashMap::new();
-
-    for table_name in base_table_list {
-        let base_table = match base_connection_pool {
-            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
-            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, &table_name).await,
-        };
-
-        base_table_map.insert(table_name, base_table);
-    }
 
     // 4. 대상 테이블 목록을 조회합니다.
     println!(">> fetching target table list...");
-
-    let target_table_list = match target_connection_pool {
-        ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
-        ConnectionPool::MySQL(ref pool) => mysql::get_table_list(pool).await,
+    let target_table_map = match get_table_list(&target_connection_pool).await {
+        Ok(map) => map,
+        Err(error) => {
+            println!("failed to get target table list: {:?}", error);
+            return;
+        }
     };
-
-    // 해당 테이블별 상세 목록을 조회합니다.
-    let mut target_table_map = HashMap::new();
-
-    println!(">> fetching target table details...");
-    for table_name in target_table_list {
-        let target_table = match target_connection_pool {
-            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
-            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, &table_name).await,
-        };
-
-        target_table_map.insert(table_name, target_table);
-    }
 
     // 5. base 테이블을 기준점으로 삼아서, target 테이블과 비교합니다.
     // A. base에 있는데 target에 없는 것은 보고 대상입니다.

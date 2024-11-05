@@ -4,7 +4,7 @@ use crate::sql::{Column, Index};
 
 use super::{ConnectionPool, Table};
 
-pub async fn get_connection_pool(connection_url: &str) -> Result<ConnectionPool, sqlx::Error> {
+pub async fn get_connection_pool(connection_url: &str) -> anyhow::Result<ConnectionPool> {
     let pool = MySqlPoolOptions::new()
         .max_connections(5)
         .connect(connection_url)
@@ -13,7 +13,7 @@ pub async fn get_connection_pool(connection_url: &str) -> Result<ConnectionPool,
     Ok(ConnectionPool::MySQL(pool))
 }
 
-pub async fn get_table_list(pool: &Pool<MySql>) -> Vec<String> {
+pub async fn get_table_list(pool: &Pool<MySql>) -> anyhow::Result<Vec<String>> {
     let table_list = sqlx::query_as::<_, (String,)>(
         r#"
         SELECT table_name
@@ -22,16 +22,15 @@ pub async fn get_table_list(pool: &Pool<MySql>) -> Vec<String> {
     "#,
     )
     .fetch_all(pool)
-    .await
-    .expect("Failed to fetch table list");
+    .await?;
 
-    table_list
+    Ok(table_list
         .into_iter()
         .map(|(table_name,)| table_name)
-        .collect()
+        .collect())
 }
 
-pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> Table {
+pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> anyhow::Result<Table> {
     log::debug!("describe table: {table_name}");
 
     // 1. 컬럼 리스트 정보 조회
@@ -52,8 +51,7 @@ pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> Table {
     )
     .bind(table_name)
     .fetch_all(pool)
-    .await
-    .expect("Failed to fetch column list");
+    .await?;
 
     let columns = query_result
         .into_iter()
@@ -89,8 +87,7 @@ pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> Table {
     )
     .bind(table_name)
     .fetch_all(pool)
-    .await
-    .expect("Failed to fetch index list");
+    .await?;
 
     let indexes = query_result
         .into_iter()
@@ -102,11 +99,13 @@ pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> Table {
         })
         .collect();
 
-    Table {
+    let table = Table {
         name: table_name.to_string(),
         comment: "".to_string(), // TODO: 테이블 comment 조회
         columns,
         indexes,
         ..Default::default()
-    }
+    };
+
+    Ok(table)
 }
