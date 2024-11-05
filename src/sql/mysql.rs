@@ -4,7 +4,7 @@ use crate::sql::{Column, Index};
 
 use super::{ConnectionPool, Table};
 
-pub async fn get_connection_pool(connection_url: &str) -> Result<ConnectionPool, sqlx::Error> {
+pub async fn get_connection_pool(connection_url: &str) -> anyhow::Result<ConnectionPool> {
     let pool = MySqlPoolOptions::new()
         .max_connections(5)
         .connect(connection_url)

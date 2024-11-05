@@ -20,6 +20,46 @@ struct ReportSchema {
     report_table_list: Vec<ReportTable>,
 }
 
+async fn connect_database(
+    database_type: DatabaseType,
+    base_connection_url: &str,
+    target_connection_url: &str,
+)  -> anyhow::Result<(ConnectionPool, ConnectionPool)> {
+    println!(">> connecting to base databases...");
+    let base_connection_pool = match database_type {
+        DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
+        DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
+    };
+
+    println!(">> connecting to target databases...");
+    let target_connection_pool = match database_type {
+        DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
+        DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
+    };
+
+    let base_connection_pool = match base_connection_pool {
+        Ok(pool) => {
+            println!(">> connected to base database");
+            pool
+        }
+        Err(error) => {
+           return Err(anyhow::anyhow!("failed to connect to base database: {:?}", error));
+        }
+    };
+
+    let target_connection_pool = match target_connection_pool {
+        Ok(pool) => {
+            println!(">> connected to target database");
+            pool
+        }
+        Err(error) => {
+            return Err(anyhow::anyhow!("failed to connect to target database: {:?}", error));
+        }
+    };
+
+   Ok( (base_connection_pool, target_connection_pool))
+}
+
 pub async fn execute(flags: CommandFlags) {
     log::info!("execute action: run");
 
@@ -39,36 +79,13 @@ pub async fn execute(flags: CommandFlags) {
     let base_connection_url = database_pair.base_connection.as_str();
     let target_connection_url = database_pair.target_connection.as_str();
 
-    println!(">> connecting to base databases...");
-    let base_connection_pool = match database_pair.database_type {
-        DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
-        DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
-    };
 
-    println!(">> connecting to target databases...");
-    let target_connection_pool = match database_pair.database_type {
-        DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
-        DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
-    };
-
-    let base_connection_pool = match base_connection_pool {
-        Ok(pool) => {
-            println!(">> connected to base database");
-            pool
-        }
+    let (base_connection_pool, target_connection_pool) = match connect_database(
+        database_pair.database_type,
+        base_connection_url, target_connection_url).await {
+        Ok(pools) => pools,
         Err(error) => {
-            println!("failed to connect to base database: {:?}", error);
-            return;
-        }
-    };
-
-    let target_connection_pool = match target_connection_pool {
-        Ok(pool) => {
-            println!(">> connected to target database");
-            pool
-        }
-        Err(error) => {
-            println!("failed to connect to target database: {:?}", error);
+            println!("failed to connect to database: {:?}", error);
             return;
         }
     };
