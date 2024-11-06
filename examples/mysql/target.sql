@@ -113,3 +113,11 @@ CREATE TABLE admins (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL
 );
+
+CREATE TABLE reports_fk_test (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  post_id INT,
+  reason TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);

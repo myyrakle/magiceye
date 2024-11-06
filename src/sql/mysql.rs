@@ -1,6 +1,6 @@
 use sqlx::{mysql::MySqlPoolOptions, MySql, Pool};
 
-use crate::sql::{Column, Index};
+use crate::sql::{Column, ForeignKey, Index};
 
 use super::{ConnectionPool, Table};
 
@@ -99,12 +99,52 @@ pub async fn describe_table(pool: &Pool<MySql>, table_name: &str) -> anyhow::Res
         })
         .collect();
 
+    // 3. 테이블에 속한 외래키 목록 조회
+    let query_result = sqlx::query_as::<_, (String, String, String, String)>(
+        r#"
+            SELECT 
+                kcu.constraint_name,
+                kcu.column_name,
+                kcu.referenced_table_name,
+                kcu.referenced_column_name
+            FROM 
+                information_schema.key_column_usage kcu
+            JOIN 
+                information_schema.referential_constraints rc
+            ON 
+                kcu.constraint_name = rc.constraint_name
+            WHERE 1=1
+                AND kcu.table_name = ?
+                AND kcu.table_schema = DATABASE()
+                AND rc.constraint_schema = DATABASE()
+        "#,
+    )
+    .bind(table_name)
+    .fetch_all(pool)
+    .await?;
+
+    let mut constraints = vec![];
+
+    for (name, column, foreign_table_name, foreign_column_name) in query_result {
+        constraints.push(
+            ForeignKey {
+                name,
+                column: vec![column],
+                foreign_column: super::SelectColumn {
+                    table_name: foreign_table_name,
+                    column_name: foreign_column_name,
+                },
+            }
+            .into(),
+        );
+    }
+
     let table = Table {
         name: table_name.to_string(),
         comment: "".to_string(), // TODO: 테이블 comment 조회
         columns,
         indexes,
-        ..Default::default()
+        constraints,
     };
 
     Ok(table)
