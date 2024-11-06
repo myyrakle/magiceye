@@ -49,3 +49,38 @@ When processing is complete, a report file is created in the form "2024-01-30 18
 
 - English
 - Korean
+
+## Report Example 
+
+```json
+{
+  "report_table_list": [
+    {
+      "table_name": "followers",
+      "report_list": [
+        "Index: followers.idx_follower_follower_id exists in the base database, but not in the target database."
+      ]
+    },
+    {
+      "table_name": "reports_fk_test",
+      "report_list": [
+        "Index: reports_fk_test.post_id exists in the base database, but not in the target database.",
+        "Foreign Key: reports_fk_test.reports_fk_test_ibfk_2 exists in the base database, but not in the target database."
+      ]
+    },
+    {
+      "table_name": "posts",
+      "report_list": [
+        "Column: posts.id has different AUTO_INCREMENT. => AUTO_INCREMENT != NOT AUTO_INCREMENT",
+        "Column: posts.title has different default value. => asdf != "
+      ]
+    },
+    {
+      "table_name": "tags",
+      "report_list": [
+        "Column: tags.name has different data type. => varchar(255) != varchar(155)"
+      ]
+    }
+  ]
+}
+```
