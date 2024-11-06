@@ -1,12 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::mpsc::{channel, Receiver, Sender}, thread};
 
+use ratatui::style::palette::tailwind::RED;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    command::run::CommandFlags,
-    config::{DatabasePair, DatabaseType, Language},
-    platform_specific::get_config,
-    sql::{mysql, postgres, ConnectionPool, Table},
+    action::enter_tui, command::run::CommandFlags, config::{DatabasePair, DatabaseType, Language}, platform_specific::get_config, sql::{mysql, postgres, ConnectionPool, Table}
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -20,83 +18,219 @@ struct ReportSchema {
     report_table_list: Vec<ReportTable>,
 }
 
-async fn connect_database(
-    database_pair: &DatabasePair,
-)  -> anyhow::Result<(ConnectionPool, ConnectionPool)> {
-    let base_connection_url = &database_pair.base_connection;
-    let target_connection_url = &database_pair.target_connection;
-    let database_type = &database_pair.database_type;
-
-    println!(">> connecting to base databases...");
-    let base_connection_pool = match database_type {
-        DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
-        DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
-    };
-
-    println!(">> connecting to target databases...");
-    let target_connection_pool = match database_type {
-        DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
-        DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
-    };
-
-    let base_connection_pool = match base_connection_pool {
-        Ok(pool) => {
-            println!(">> connected to base database");
-            pool
-        }
-        Err(error) => {
-           return Err(anyhow::anyhow!("failed to connect to base database: {:?}", error));
-        }
-    };
-
-    let target_connection_pool = match target_connection_pool {
-        Ok(pool) => {
-            println!(">> connected to target database");
-            pool
-        }
-        Err(error) => {
-            return Err(anyhow::anyhow!("failed to connect to target database: {:?}", error));
-        }
-    };
-
-   Ok( (base_connection_pool, target_connection_pool))
+struct FetchingTableList {
+    total_count: Option<usize>,
+    current_count: usize,
+    finished: bool,
 }
 
-async fn get_table_list(
-    connection_pool: &ConnectionPool,
-) ->anyhow::Result<HashMap<String, Table>> {
-    println!(">> fetching table list...");
-    let table_list_result = match connection_pool {
-        ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
-        ConnectionPool::MySQL(ref pool) => mysql::get_table_list(pool).await,
-    };
-
-    let table_list = match table_list_result {
-        Ok(list) => list,
-        Err(error) => {
-            return Err(anyhow::anyhow!("failed to get table list: {:?}", error));
+impl FetchingTableList {
+    fn percentage(&self) -> f64 {
+        if let Some(total_count) = self.total_count {
+            (self.current_count as f64 / total_count as f64) * 100.0
+        } else {
+            0.0
         }
+    }
+}
+
+struct ComparingTable {
+    total_count: usize,
+    current_count: usize,
+    finished: bool,
+}
+
+impl ComparingTable {
+    fn percentage(&self) -> f64 {
+        (self.current_count as f64 / self.total_count as f64) * 100.0
+    }
+}
+
+enum ProgressEvent {
+    Start,
+    StartFetchingBaseTableList,
+    StartFetchingTargetTableList,
+    FetchingTableList(FetchingTableList),
+    StartComparingTable,
+    ComparingTable(ComparingTable),
+    SavingReportFile,
+    Finished,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Step {
+    Start = 0,
+    FetchingBaseTableList = 1,
+    FetchingTargetTableList = 2,
+    ComparingTable = 3,
+    SavingReportFile = 4,
+    Finished = 5,
+}
+
+const STEP_COUNT: usize = Step::SavingReportFile as usize + 1;
+
+fn run_progress_view(
+    event_receiver: Receiver<ProgressEvent>,
+) -> anyhow::Result<()> {
+    use std::io::stdout;
+
+    use crossterm::event::{self, KeyCode, KeyEventKind};
+    use crossterm::terminal::{
+        disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    };
+    use crossterm::ExecutableCommand;
+    use ratatui::{
+        style::{Color, Style},
+        widgets::{Block, BorderType, Borders, Paragraph},
     };
 
-    let mut table_map = HashMap::new();
+    let mut terminal = enter_tui();
 
-    for table_name in table_list {
-        let table_result = match connection_pool {
-            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
-            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, &table_name).await,
-        };
+    stdout().execute(EnterAlternateScreen).unwrap();
+    enable_raw_mode().unwrap();
 
-        let table = match table_result {
-            Ok(table) => table,
-            Err(error) => {
-                return Err(anyhow::anyhow!("failed to describe table: {:?}", error));
+    let mut current_step = Step::Start;
+
+    let mut render_text = String::new();
+    let mut stacked_text = String::new();
+    let mut description_text = String::new();
+
+    let mut fetching_table_list_status = FetchingTableList {
+        total_count: None,
+        current_count: 0,
+        finished: false,
+    };
+
+    let mut comparison_table_status = ComparingTable {
+        total_count: 0,
+        current_count: 0,
+        finished: false,
+    };
+
+    loop {
+        description_text.clear();
+        render_text.clear();
+        render_text.push_str(stacked_text.as_str());
+
+        // handle new event
+        if let Ok(event) = event_receiver.try_recv() {
+            match event {
+                ProgressEvent::Start => {},
+                ProgressEvent::StartFetchingBaseTableList =>  {
+                    current_step = Step::FetchingBaseTableList;
+                    stacked_text.push_str(">> Database Connected - DONE ☑ \n");
+                },
+                ProgressEvent::StartFetchingTargetTableList => {
+                    current_step = Step::FetchingTargetTableList;
+                    stacked_text.push_str(">> Fetching base table list - DONE ☑ \n");
+                }
+                ProgressEvent::FetchingTableList(fetching_table_list) => {
+                    fetching_table_list_status = fetching_table_list;
+                },
+                ProgressEvent::StartComparingTable => {
+                    current_step = Step::ComparingTable;
+                    stacked_text.push_str(">> Fetching target table list - DONE ☑ \n");
+                }
+                ProgressEvent::ComparingTable(comparing_table) => {
+                    comparison_table_status = comparing_table;
+                }
+                ProgressEvent::SavingReportFile => {
+                    current_step = Step::SavingReportFile;
+                    stacked_text.push_str(">> Comparing table - DONE ☑ \n");
+                }
+                ProgressEvent::Finished => {
+                    current_step = Step::Finished;
+                    stacked_text.push_str(">> Saving report file - DONE ☑ \n");
+                }
             }
-        };
+        }
 
-        table_map.insert(table_name, table);
+        // rendering text 생성
+
+        // 최상단 스텝 표시
+        render_text.push_str("**Step**\n");
+        for i in 0..STEP_COUNT {
+            if i >= current_step as usize {
+                render_text.push_str(" ■");
+            } else {
+                render_text.push_str(" □");
+            }
+        }
+        render_text.push('\n');
+
+        render_text.push_str(&stacked_text);
+
+        match current_step {
+            Step::Start => {
+                render_text.push_str(">>> Database Connecting...\n");
+            }
+            Step::FetchingBaseTableList => {
+                render_text.push_str(format!(">>> Fetching base table list... - [{}%]\n", fetching_table_list_status.percentage()).as_str());
+            }
+            Step::FetchingTargetTableList => {
+                render_text.push_str(format!(">>> Fetching target table list... - [{}%]\n", fetching_table_list_status.percentage()).as_str());
+            }
+            Step::ComparingTable => {
+                render_text.push_str(format!(">>> Comparing table... - [{}%]\n", comparison_table_status.percentage()).as_str());
+            }
+            Step::SavingReportFile => {
+                render_text.push_str(">>> Saving report file... \n");
+            }
+            Step::Finished => {
+                render_text.push_str(">> Finished\n");
+            }
+        }
+
+        if !description_text.is_empty() {
+            render_text.push_str("\n\n\n");
+            render_text.push_str("------------ Description ------------\n");
+
+            render_text.push_str(description_text.as_str());
+            render_text.push('\n');
+
+            render_text.push_str("- Press [Enter] to confirm, [ESC] to cancel.");
+        }
+
+        let block = Block::default()
+            .title("Initilize Config")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Magenta))
+            .border_type(BorderType::Rounded);
+
+        let paragraph = Paragraph::new(render_text.clone()).block(block);
+
+        terminal.draw(|frame| {
+            let area = frame.size();
+            frame.render_widget(paragraph, area);
+        })?;
+
+        // 이벤트 핸들링
+        if event::poll(std::time::Duration::from_millis(16))? {
+            if let event::Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    match key.code {
+                        KeyCode::Char('q') => {
+                            break;
+                        }
+                        KeyCode::Enter => {
+                            //break;
+                        }
+                        KeyCode::Esc => {
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
     }
 
-    Ok(table_map)
+    stdout().execute(LeaveAlternateScreen).unwrap();
+    disable_raw_mode().unwrap();
+
+    println!("Goodbye!");
+
+    Ok(())
 }
 
 pub async fn execute(flags: CommandFlags) {
@@ -116,23 +250,32 @@ pub async fn execute(flags: CommandFlags) {
 
     // 1. 커넥션 정보가 없다면 에러 문구를 출력하고 종료합니다.
     let Some(database_pair) = config.default_database_pair else {
-        println!("database connection pair is not set. try to [magiceye init] first.");
+        // println!("database connection pair is not set. try to [magiceye init] first.");
         return;
     };
 
+    let (sender, receiver) = channel();
+
+    thread::spawn(|| {
+        if let Err(error) = run_progress_view(receiver) {
+            // println!("failed to run progress view: {:?}", error);
+        }
+    });
+
     // 2. 커넥션 정보를 기반으로 실제 데이터베이스에 연결합니다.
+    _= sender.send(ProgressEvent::Start);
     let (base_connection_pool, target_connection_pool) = match connect_database(
         &database_pair).await {
         Ok(pools) => pools,
         Err(error) => {
-            println!("failed to connect to database: {:?}", error);
+            // println!("failed to connect to database: {:?}", error);
             return;
         }
     };
 
     // 3. base 테이블 목록을 조회합니다.
-    println!(">> fetching base table list...");
-    let base_table_map = match get_table_list(&base_connection_pool).await {
+    _ = sender.send(ProgressEvent::StartFetchingBaseTableList);
+    let base_table_map = match get_table_list(&sender, &base_connection_pool).await {
         Ok(map) => map,
         Err(error) => {
             println!("failed to get base table list: {:?}", error);
@@ -141,8 +284,8 @@ pub async fn execute(flags: CommandFlags) {
     };
 
     // 4. 대상 테이블 목록을 조회합니다.
-    println!(">> fetching target table list...");
-    let target_table_map = match get_table_list(&target_connection_pool).await {
+    _ = sender.send(ProgressEvent::StartFetchingTargetTableList);
+    let target_table_map = match get_table_list(&sender, &target_connection_pool).await {
         Ok(map) => map,
         Err(error) => {
             println!("failed to get target table list: {:?}", error);
@@ -154,6 +297,7 @@ pub async fn execute(flags: CommandFlags) {
     // A. base에 있는데 target에 없는 것은 보고 대상입니다.
     // B. base에 있고 target에도 있지만, 내용이 다른 것도 보고 대상입니다.
     // C. base에 없고 target에만 있는 것은 보고 대상이 아닙니다. 무시합니다.
+    _ = sender.send(ProgressEvent::StartComparingTable);
 
     let mut report = ReportSchema {
         report_table_list: vec![],
@@ -161,15 +305,19 @@ pub async fn execute(flags: CommandFlags) {
 
     let table_count = base_table_map.len();
 
-    println!(">> table count: {}", table_count);
-
+    _ = sender.send(ProgressEvent::ComparingTable(ComparingTable{
+        total_count: table_count,
+        current_count: 0,
+        finished: false,
+    }));
     for (i, (base_table_name, base_table)) in base_table_map.into_iter().enumerate() {
         let target_table = target_table_map.get(&base_table_name);
 
-        println!(
-            ">> comparing table: {}... ({i}/{table_count})",
-            base_table_name
-        );
+        _ = sender.send(ProgressEvent::ComparingTable(ComparingTable{
+            total_count: table_count,
+            current_count: i + 1,
+            finished: false,
+        }));
 
         let mut has_report = false;
 
@@ -449,11 +597,14 @@ pub async fn execute(flags: CommandFlags) {
         }
     }
 
-    println!(">> comparison done.");
+    _ = sender.send(ProgressEvent::ComparingTable(ComparingTable{
+        total_count: table_count,
+        current_count: table_count,
+        finished: true,
+    }));
 
     // 6. 보고서를 파일로 생성합니다.
-
-    println!(">> saving report file...");
+    _ = sender.send(ProgressEvent::SavingReportFile);
 
     let current_date = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
     let report_file_name = format!("report_{}.json", current_date);
@@ -462,5 +613,98 @@ pub async fn execute(flags: CommandFlags) {
 
     std::fs::write(&report_file_name, &report_json).unwrap();
 
-    println!("@ report file saved: {}", report_file_name);
+    _ = sender.send(ProgressEvent::Finished);
 }
+
+
+async fn connect_database(
+    database_pair: &DatabasePair,
+)  -> anyhow::Result<(ConnectionPool, ConnectionPool)> {
+    let base_connection_url = &database_pair.base_connection;
+    let target_connection_url = &database_pair.target_connection;
+    let database_type = &database_pair.database_type;
+
+    //println!(">> connecting to base databases...");
+    let base_connection_pool = match database_type {
+        DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
+        DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
+    };
+
+    //println!(">> connecting to target databases...");
+    let target_connection_pool = match database_type {
+        DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
+        DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
+    };
+
+    let base_connection_pool = match base_connection_pool {
+        Ok(pool) => {
+            //println!(">> connected to base database");
+            pool
+        }
+        Err(error) => {
+           return Err(anyhow::anyhow!("failed to connect to base database: {:?}", error));
+        }
+    };
+
+    let target_connection_pool = match target_connection_pool {
+        Ok(pool) => {
+            //println!(">> connected to target database");
+            pool
+        }
+        Err(error) => {
+            return Err(anyhow::anyhow!("failed to connect to target database: {:?}", error));
+        }
+    };
+
+   Ok( (base_connection_pool, target_connection_pool))
+}
+
+async fn get_table_list(
+    sender: &Sender<ProgressEvent>,
+    connection_pool: &ConnectionPool,
+) ->anyhow::Result<HashMap<String, Table>> {
+    let table_list_result = match connection_pool {
+        ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
+        ConnectionPool::MySQL(ref pool) => mysql::get_table_list(pool).await,
+    };
+
+    let table_list = match table_list_result {
+        Ok(list) => list,
+        Err(error) => {
+            return Err(anyhow::anyhow!("failed to get table list: {:?}", error));
+        }
+    };
+
+    let mut table_map = HashMap::new();
+
+    for (i,table_name) in table_list.iter().enumerate() {
+        _ = sender.send(ProgressEvent::FetchingTableList(FetchingTableList {
+            total_count: Some(table_list.len()),
+            current_count: i + 1,
+            finished: false,
+        }));
+
+        let table_result = match connection_pool {
+            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
+            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, &table_name).await,
+        };
+
+        let table = match table_result {
+            Ok(table) => table,
+            Err(error) => {
+                return Err(anyhow::anyhow!("failed to describe table: {:?}", error));
+            }
+        };
+
+        table_map.insert(table_name.to_owned(), table);
+    }
+
+    _ = sender.send(ProgressEvent::FetchingTableList(FetchingTableList {
+        total_count: Some(table_list.len()),
+        current_count: table_list.len(),
+        finished: true,
+    }));
+
+    Ok(table_map)
+}
+
