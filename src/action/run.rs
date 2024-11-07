@@ -655,7 +655,7 @@ pub async fn execute(flags: CommandFlags) {
 
     // 1. 커넥션 정보가 없다면 에러 문구를 출력하고 종료합니다.
     let Some(database_pair) = config.default_database_pair.clone() else {
-        // println!("database connection pair is not set. try to [magiceye init] first.");
+        println!("database connection pair is not set. try to [magiceye init] first.");
         return;
     };
 
@@ -679,13 +679,11 @@ async fn connect_database(
     let target_connection_url = &database_pair.target_connection;
     let database_type = &database_pair.database_type;
 
-    //println!(">> connecting to base databases...");
     let base_connection_pool = match database_type {
         DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
         DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
     };
 
-    //println!(">> connecting to target databases...");
     let target_connection_pool = match database_type {
         DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
         DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
@@ -693,7 +691,6 @@ async fn connect_database(
 
     let base_connection_pool = match base_connection_pool {
         Ok(pool) => {
-            //println!(">> connected to base database");
             pool
         }
         Err(error) => {
