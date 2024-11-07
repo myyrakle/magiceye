@@ -745,8 +745,8 @@ async fn get_table_list(
         }));
 
         let table_result = match connection_pool {
-            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, &table_name).await,
-            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, &table_name).await,
+            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, table_name).await,
+            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, table_name).await,
         };
 
         let table = match table_result {
