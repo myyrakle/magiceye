@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{action::run::{tui::{ComparingTable, ProgressEvent}, SenderContext}, config::Language, sql::{Column, Table}};
+use crate::{action::run::{tui::{ComparingTable, ProgressEvent}, SenderContext}, config::Language, sql::{Column, Index, Table}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,82 +64,14 @@ pub fn difference_check(
                 for index in &base_table.indexes {
                     let target_index = target_table.indexes.iter().find(|i| i.name == index.name);
 
-                    let base_index_name = &index.name;
-
-                    match target_index {
-                        Some(target_index) => {
-                            if index.columns != target_index.columns {
-                                let base_columns = index.columns.join(", ");
-                                let target_columns = target_index.columns.join(", ");
-
-                                let report_text = match context.config.current_language {
-                                     Language::Korean=>format!(
-                                         "Index: {base_table_name}.{base_index_name}의 컬럼이 다릅니다. 순서까지 확인해주세요. => {base_columns} != {target_columns}"
-                                     ),
-                                     Language::English=>format!(
-                                         "Index: {base_table_name}.{base_index_name} has different columns. Please check the order. => {base_columns} != {target_columns}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-
-                            if index.predicate != target_index.predicate {
-                                let base_predicate = &index.predicate;
-                                let target_predicate = &target_index.predicate;
-
-                                let report_text = match context.config.current_language {
-                                     Language::Korean=>format!(
-                                         "Index: {base_table_name}.{base_index_name}의 조건이 다릅니다. => {base_predicate} != {target_predicate}"
-                                     ),
-                                     Language::English=>format!(
-                                         "Index: {base_table_name}.{base_index_name} has different predicate. => {base_predicate} != {target_predicate}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-
-                            if index.is_unique != target_index.is_unique {
-                                let base_uniqueness = if index.is_unique {
-                                    "UNIQUE"
-                                } else {
-                                    "NOT UNIQUE"
-                                };
-                                let target_uniqueness = if target_index.is_unique {
-                                    "UNIQUE"
-                                } else {
-                                    "NOT UNIQUE"
-                                };
-
-                                let report_text = match context.config.current_language {
-                                     Language::Korean=>format!(
-                                         "Index: {base_table_name}.{base_index_name}의 UNIQUE 여부가 다릅니다. => {base_uniqueness} != {target_uniqueness}"
-                                     ),
-                                     Language::English=>format!(
-                                         "Index: {base_table_name}.{base_index_name} has different uniqueness. => {base_uniqueness} != {target_uniqueness}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-                        }
-                        None => {
-                            let report_text = match context.config.current_language {
-                                 Language::Korean=>format!(
-                                     "Index: {base_table_name}.{base_index_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
-                                 ),
-                                 Language::English=>format!(
-                                     "Index: {base_table_name}.{base_index_name} exists in the base database, but not in the target database."
-                                 ),
-                             };
-
-                            report_table.report_list.push(report_text);
-                            has_report = true;
-                        }
+                    if compare_index(
+                        context,
+                        &mut report_table,
+                        &base_table,
+                        index,
+                        target_index,
+                    ) {
+                        has_report = true;
                     }
                 }
 
@@ -340,6 +272,97 @@ fn compare_column(
                  ),
                  Language::English=>format!(
                      "Column: {base_table_name}.{base_column_name} exists in the base database, but not in the target database."
+                 ),
+             };
+
+            report_table.report_list.push(report_text);
+            has_report = true;
+        }
+    }
+
+    has_report
+}
+
+fn compare_index(
+    context: &SenderContext,
+    report_table: &mut ReportTable,
+    base_table: &Table,
+    base_index: &Index,
+    target_index: Option<&Index>,
+) -> bool{
+    let mut has_report = false;
+
+    let base_table_name = &base_table.name;
+    let base_index_name = &base_index.name;
+
+    match target_index {
+        Some(target_index) => {
+            if base_index.columns != target_index.columns {
+                let base_columns = base_index.columns.join(", ");
+                let target_columns = target_index.columns.join(", ");
+
+                let report_text = match context.config.current_language {
+                     Language::Korean=>format!(
+                         "Index: {base_table_name}.{base_index_name}의 컬럼이 다릅니다. 순서까지 확인해주세요. => {base_columns} != {target_columns}"
+                     ),
+                     Language::English=>format!(
+                         "Index: {base_table_name}.{base_index_name} has different columns. Please check the order. => {base_columns} != {target_columns}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+
+            if base_index.predicate != target_index.predicate {
+                let base_predicate = &base_index.predicate;
+                let target_predicate = &target_index.predicate;
+
+                let report_text = match context.config.current_language {
+                     Language::Korean=>format!(
+                         "Index: {base_table_name}.{base_index_name}의 조건이 다릅니다. => {base_predicate} != {target_predicate}"
+                     ),
+                     Language::English=>format!(
+                         "Index: {base_table_name}.{base_index_name} has different predicate. => {base_predicate} != {target_predicate}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+
+            if base_index.is_unique != target_index.is_unique {
+                let base_uniqueness = if base_index.is_unique {
+                    "UNIQUE"
+                } else {
+                    "NOT UNIQUE"
+                };
+                let target_uniqueness = if target_index.is_unique {
+                    "UNIQUE"
+                } else {
+                    "NOT UNIQUE"
+                };
+
+                let report_text = match context.config.current_language {
+                     Language::Korean=>format!(
+                         "Index: {base_table_name}.{base_index_name}의 UNIQUE 여부가 다릅니다. => {base_uniqueness} != {target_uniqueness}"
+                     ),
+                     Language::English=>format!(
+                         "Index: {base_table_name}.{base_index_name} has different uniqueness. => {base_uniqueness} != {target_uniqueness}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+        }
+        None => {
+            let report_text = match context.config.current_language {
+                 Language::Korean=>format!(
+                     "Index: {base_table_name}.{base_index_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
+                 ),
+                 Language::English=>format!(
+                     "Index: {base_table_name}.{base_index_name} exists in the base database, but not in the target database."
                  ),
              };
 
