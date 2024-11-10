@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{action::run::{tui::{ComparingTable, ProgressEvent}, SenderContext}, config::Language, sql::Table};
+use crate::{action::run::{tui::{ComparingTable, ProgressEvent}, SenderContext}, config::Language, sql::{Column, Table}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,121 +50,14 @@ pub fn difference_check(
                 for column in &base_table.columns {
                     let target_column = target_table.columns.iter().find(|c| c.name == column.name);
 
-                    let base_column_name = &column.name;
-
-                    match target_column {
-                        Some(target_column) => {
-                            if column.data_type != target_column.data_type {
-                                let base_data_type = &column.data_type;
-                                let target_data_type = &target_column.data_type;
-
-                                let report_text = match context.config.current_language {
-                                     Language::Korean=>format!(
-                                         "Column: {base_table_name}.{base_column_name}의 데이터 타입이 다릅니다. => {base_data_type} != {target_data_type}"
-                                     ),
-                                     Language::English=>format!(
-                                         "Column: {base_table_name}.{base_column_name} has different data type. => {base_data_type} != {target_data_type}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-
-                            if column.comment != target_column.comment {
-                                let base_comment = &column.comment;
-                                let target_comment = &target_column.comment;
-
-                                let report_text = match context.config.current_language {
-                                     Language::Korean=>format!(
-                                         "Column: {base_table_name}.{base_column_name}의 코멘트가 다릅니다. => {base_comment} != {target_comment}"
-                                     ),
-                                     Language::English=>format!(
-                                         "Column: {base_table_name}.{base_column_name} has different comment. => {base_comment} != {target_comment}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-
-                            if column.nullable != target_column.nullable {
-                                let base_nullable =
-                                    if column.nullable { "NULL" } else { "NOT NULL" };
-                                let target_nullable = if target_column.nullable {
-                                    "NULL"
-                                } else {
-                                    "NOT NULL"
-                                };
-
-                                let report_text = match context.config.current_language {
-                                     Language::Korean=>format!(
-                                         "Column: {base_table_name}.{base_column_name}의 NULLABLE이 다릅니다. => {base_nullable} != {target_nullable}"
-                                     ),
-                                     Language::English=>format!(
-                                         "Column: {base_table_name}.{base_column_name} has different nullable. => {base_nullable} != {target_nullable}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-
-                            if column.default != target_column.default {
-                                let base_default = &column.default;
-                                let target_default = &target_column.default;
-
-                                let report_text = match context.config.current_language {
-                                     Language::Korean=>format!(
-                                         "Column: {base_table_name}.{base_column_name}의 DEFAULT 값이 다릅니다. => {base_default} != {target_default}"
-                                     ),
-                                     Language::English=>format!(
-                                         "Column: {base_table_name}.{base_column_name} has different default value. => {base_default} != {target_default}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-
-                            if column.is_auto_increment != target_column.is_auto_increment {
-                                let base_auto_increment = if column.is_auto_increment {
-                                    "AUTO_INCREMENT"
-                                } else {
-                                    "NOT AUTO_INCREMENT"
-                                };
-                                let target_auto_increment = if target_column.is_auto_increment {
-                                    "AUTO_INCREMENT"
-                                } else {
-                                    "NOT AUTO_INCREMENT"
-                                };
-
-                                let report_text = match context.config.current_language {
-                                     Language::Korean=>format!( 
-                                         "Column: {base_table_name}.{base_column_name}의 AUTO_INCREMENT 여부가 다릅니다. => {base_auto_increment} != {target_auto_increment}"
-                                     ),
-                                     Language::English=>format!(
-                                         "Column: {base_table_name}.{base_column_name} has different AUTO_INCREMENT. => {base_auto_increment} != {target_auto_increment}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-                        }
-                        None => {
-                            let report_text = match context.config.current_language {
-                                 Language::Korean=>format!(
-                                     "Column: {base_table_name}.{base_column_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
-                                 ),
-                                 Language::English=>format!(
-                                     "Column: {base_table_name}.{base_column_name} exists in the base database, but not in the target database."
-                                 ),
-                             };
-
-                            report_table.report_list.push(report_text);
-                            has_report = true;
-                        }
+                    if compare_column(
+                        context,
+                        &mut report_table,
+                        &base_table,
+                        column,
+                        target_column,
+                    ) {
+                        has_report = true;
                     }
                 }
 
@@ -325,4 +218,135 @@ pub fn difference_check(
     }));
 
     report
+}
+
+fn compare_column(
+    context: &SenderContext,
+    report_table: &mut ReportTable,
+    base_table : &Table,
+    base_column: &Column,
+    target_column: Option<&Column>,
+) -> bool {
+    let mut has_report = false;
+
+    let base_table_name = &base_table.name;
+
+    let base_column_name = &base_column.name;
+
+    match target_column {
+        Some(target_column) => {
+            if base_column.data_type != target_column.data_type {
+                let base_data_type = &base_column.data_type;
+                let target_data_type = &target_column.data_type;
+
+                let report_text = match context.config.current_language {
+                     Language::Korean=>format!(
+                         "Column: {base_table_name}.{base_column_name}의 데이터 타입이 다릅니다. => {base_data_type} != {target_data_type}"
+                     ),
+                     Language::English=>format!(
+                         "Column: {base_table_name}.{base_column_name} has different data type. => {base_data_type} != {target_data_type}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+
+            if base_column.comment != target_column.comment {
+                let base_comment = &base_column.comment;
+                let target_comment = &target_column.comment;
+
+                let report_text = match context.config.current_language {
+                     Language::Korean=>format!(
+                         "Column: {base_table_name}.{base_column_name}의 코멘트가 다릅니다. => {base_comment} != {target_comment}"
+                     ),
+                     Language::English=>format!(
+                         "Column: {base_table_name}.{base_column_name} has different comment. => {base_comment} != {target_comment}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+
+            if base_column.nullable != target_column.nullable {
+                let base_nullable =
+                    if base_column.nullable { "NULL" } else { "NOT NULL" };
+                let target_nullable = if target_column.nullable {
+                    "NULL"
+                } else {
+                    "NOT NULL"
+                };
+
+                let report_text = match context.config.current_language {
+                     Language::Korean=>format!(
+                         "Column: {base_table_name}.{base_column_name}의 NULLABLE이 다릅니다. => {base_nullable} != {target_nullable}"
+                     ),
+                     Language::English=>format!(
+                         "Column: {base_table_name}.{base_column_name} has different nullable. => {base_nullable} != {target_nullable}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+
+            if base_column.default != target_column.default {
+                let base_default = &base_column.default;
+                let target_default = &target_column.default;
+
+                let report_text = match context.config.current_language {
+                     Language::Korean=>format!(
+                         "Column: {base_table_name}.{base_column_name}의 DEFAULT 값이 다릅니다. => {base_default} != {target_default}"
+                     ),
+                     Language::English=>format!(
+                         "Column: {base_table_name}.{base_column_name} has different default value. => {base_default} != {target_default}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+
+            if base_column.is_auto_increment != target_column.is_auto_increment {
+                let base_auto_increment = if base_column.is_auto_increment {
+                    "AUTO_INCREMENT"
+                } else {
+                    "NOT AUTO_INCREMENT"
+                };
+                let target_auto_increment = if target_column.is_auto_increment {
+                    "AUTO_INCREMENT"
+                } else {
+                    "NOT AUTO_INCREMENT"
+                };
+
+                let report_text = match context.config.current_language {
+                     Language::Korean=>format!( 
+                         "Column: {base_table_name}.{base_column_name}의 AUTO_INCREMENT 여부가 다릅니다. => {base_auto_increment} != {target_auto_increment}"
+                     ),
+                     Language::English=>format!(
+                         "Column: {base_table_name}.{base_column_name} has different AUTO_INCREMENT. => {base_auto_increment} != {target_auto_increment}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+        }
+        None => {
+            let report_text = match context.config.current_language {
+                 Language::Korean=>format!(
+                     "Column: {base_table_name}.{base_column_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
+                 ),
+                 Language::English=>format!(
+                     "Column: {base_table_name}.{base_column_name} exists in the base database, but not in the target database."
+                 ),
+             };
+
+            report_table.report_list.push(report_text);
+            has_report = true;
+        }
+    }
+
+    has_report
 }
