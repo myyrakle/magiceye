@@ -1,6 +1,9 @@
+#[path="./steps/mod.rs"]
+mod steps;
+
 use std::collections::HashMap;
 
-use crate::{config::{DatabasePair, DatabaseType, Language}, sql::{mysql, postgres, ConnectionPool, Table}};
+use crate::{config::Language, sql::{mysql, postgres, ConnectionPool, Table}};
 use serde::{Deserialize, Serialize};
 
 use super::{tui::{ComparingTable, FetchingTableList, ProgressEvent}, SenderContext};
@@ -16,7 +19,6 @@ struct ReportSchema {
     report_table_list: Vec<ReportTable>,
 }
 
-
 pub(super) async fn generate_report(
     context: SenderContext,
 ) -> anyhow::Result<()> {
@@ -26,7 +28,7 @@ pub(super) async fn generate_report(
     // 1. 커넥션 정보를 기반으로 실제 데이터베이스에 연결합니다.
     _ = context.event_sender.send(ProgressEvent::Start);
     let (base_connection_pool, target_connection_pool) =
-        match connect_database(&database_pair).await {
+        match steps::connect_database(&database_pair).await {
             Ok(pools) => pools,
             Err(error) => {
                 return Err(anyhow::anyhow!(
@@ -386,50 +388,6 @@ pub(super) async fn generate_report(
     Ok(())
 }
 
-
-
-async fn connect_database(
-    database_pair: &DatabasePair,
-) -> anyhow::Result<(ConnectionPool, ConnectionPool)> {
-    let base_connection_url = &database_pair.base_connection;
-    let target_connection_url = &database_pair.target_connection;
-    let database_type = &database_pair.database_type;
-
-    let base_connection_pool = match database_type {
-        DatabaseType::Postgres => postgres::get_connection_pool(base_connection_url).await,
-        DatabaseType::Mysql => mysql::get_connection_pool(base_connection_url).await,
-    };
-
-    let target_connection_pool = match database_type {
-        DatabaseType::Postgres => postgres::get_connection_pool(target_connection_url).await,
-        DatabaseType::Mysql => mysql::get_connection_pool(target_connection_url).await,
-    };
-
-    let base_connection_pool = match base_connection_pool {
-        Ok(pool) => pool,
-        Err(error) => {
-            return Err(anyhow::anyhow!(
-                "failed to connect to base database: {:?}",
-                error
-            ));
-        }
-    };
-
-    let target_connection_pool = match target_connection_pool {
-        Ok(pool) => {
-            //println!(">> connected to target database");
-            pool
-        }
-        Err(error) => {
-            return Err(anyhow::anyhow!(
-                "failed to connect to target database: {:?}",
-                error
-            ));
-        }
-    };
-
-    Ok((base_connection_pool, target_connection_pool))
-}
 
 async fn get_table_list(
     context: &SenderContext,
