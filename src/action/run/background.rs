@@ -1,12 +1,11 @@
 #[path="./steps/mod.rs"]
 mod steps;
 
-use std::collections::HashMap;
 
-use crate::{config::Language, sql::{mysql, postgres, ConnectionPool, Table}};
+use crate::config::Language;
 use serde::{Deserialize, Serialize};
 
-use super::{tui::{ComparingTable, FetchingTableList, ProgressEvent}, SenderContext};
+use super::{tui::{ComparingTable, ProgressEvent}, SenderContext};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ReportTable {
@@ -40,7 +39,7 @@ pub(super) async fn generate_report(
 
     // 2. base 테이블 목록을 조회합니다.
     _ = context.event_sender.send(ProgressEvent::StartFetchingBaseTableList);
-    let base_table_map = match get_table_list(&context, &base_connection_pool).await {
+    let base_table_map = match steps::get_table_list(&context, &base_connection_pool).await {
         Ok(map) => map,
         Err(error) => {
             return Err(anyhow::anyhow!(
@@ -52,7 +51,7 @@ pub(super) async fn generate_report(
 
     // 3. 대상 테이블 목록을 조회합니다.
     _ = context.event_sender.send(ProgressEvent::StartFetchingTargetTableList);
-    let target_table_map = match get_table_list(&context, &target_connection_pool).await {
+    let target_table_map = match steps::get_table_list(&context, &target_connection_pool).await {
         Ok(map) => map,
         Err(error) => {
             return Err(anyhow::anyhow!(
@@ -386,52 +385,4 @@ pub(super) async fn generate_report(
     _ = context.event_sender.send(ProgressEvent::Finished);
 
     Ok(())
-}
-
-
-async fn get_table_list(
-    context: &SenderContext,
-    connection_pool: &ConnectionPool,
-) -> anyhow::Result<HashMap<String, Table>> {
-    let table_list_result = match connection_pool {
-        ConnectionPool::Postgres(ref pool) => postgres::get_table_list(pool).await,
-        ConnectionPool::MySQL(ref pool) => mysql::get_table_list(pool).await,
-    };
-
-    let table_list = match table_list_result {
-        Ok(list) => list,
-        Err(error) => {
-            return Err(anyhow::anyhow!("failed to get table list: {:?}", error));
-        }
-    };
-
-    let mut table_map = HashMap::new();
-
-    for (i, table_name) in table_list.iter().enumerate() {
-        _ = context.event_sender.send(ProgressEvent::FetchingTableList(FetchingTableList {
-            total_count: Some(table_list.len()),
-            current_count: i + 1,
-        }));
-
-        let table_result = match connection_pool {
-            ConnectionPool::Postgres(ref pool) => postgres::describe_table(pool, table_name).await,
-            ConnectionPool::MySQL(ref pool) => mysql::describe_table(pool, table_name).await,
-        };
-
-        let table = match table_result {
-            Ok(table) => table,
-            Err(error) => {
-                return Err(anyhow::anyhow!("failed to describe table: {:?}", error));
-            }
-        };
-
-        table_map.insert(table_name.to_owned(), table);
-    }
-
-    _ = context.event_sender.send(ProgressEvent::FetchingTableList(FetchingTableList {
-        total_count: Some(table_list.len()),
-        current_count: table_list.len(),
-    }));
-
-    Ok(table_map)
 }
