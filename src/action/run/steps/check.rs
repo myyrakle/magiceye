@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{action::run::{tui::{ComparingTable, ProgressEvent}, SenderContext}, config::Language, sql::{Column, Index, Table}};
+use crate::{action::run::{tui::{ComparingTable, ProgressEvent}, SenderContext}, config::Language, sql::{Column, ForeignKey, Index, Table}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,48 +79,15 @@ pub fn difference_check(
                     let target_foreign_key =
                         target_table.find_foreign_key_by_key_name(&foreign_key.name);
 
-                    let base_foreign_key_name = &foreign_key.name;
-
-                    match target_foreign_key {
-                        Some(target_foreign_key) => {
-                            // 외래키가 참조하는 테이블이 다르면 보고합니다.
-                            if foreign_key.foreign_column != target_foreign_key.foreign_column {
-                                let base_foreign_table_name =
-                                    &foreign_key.foreign_column.table_name;
-                                let base_foreign_column_name =
-                                    &foreign_key.foreign_column.column_name;
-
-                                let target_foreign_table_name =
-                                    &target_foreign_key.foreign_column.table_name;
-                                let target_foreign_column_name =
-                                    &target_foreign_key.foreign_column.column_name;
-
-                                let report_text = match context.config.current_language {
-                                     Language::English=>format!(
-                                         "Foreign Key: {base_table_name}.{base_foreign_key_name} references different column. => {base_foreign_table_name}.{base_foreign_column_name} != {target_foreign_table_name}.{target_foreign_column_name}"
-                                     ),
-                                     Language::Korean=>format!(
-                                         "Foreign Key: {base_table_name}.{base_foreign_key_name}의 참조 컬럼이 다릅니다. => {base_foreign_table_name}.{base_foreign_column_name} != {target_foreign_table_name}.{target_foreign_column_name}"
-                                     ),
-                                 };
-
-                                report_table.report_list.push(report_text);
-                                has_report = true;
-                            }
-                        }
-                        None => {
-                            let report_text = match context.config.current_language {
-                                 Language::English=>format!(
-                                     "Foreign Key: {base_table_name}.{base_foreign_key_name} exists in the base database, but not in the target database."
-                                 ),
-                                 Language::Korean=>format!(
-                                     "Foreign Key: {base_table_name}.{base_foreign_key_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
-                                 ),
-                             };
-
-                            report_table.report_list.push(report_text);
-                            has_report = true;
-                        }
+                  
+                    if compare_foreign_key(
+                        context,
+                        &mut report_table,
+                        &base_table,
+                        foreign_key,
+                        target_foreign_key,
+                    ) {
+                        has_report = true;
                     }
                 }
             }
@@ -363,6 +330,62 @@ fn compare_index(
                  ),
                  Language::English=>format!(
                      "Index: {base_table_name}.{base_index_name} exists in the base database, but not in the target database."
+                 ),
+             };
+
+            report_table.report_list.push(report_text);
+            has_report = true;
+        }
+    }
+
+    has_report
+}
+
+fn compare_foreign_key(
+    context: &SenderContext,
+    report_table: &mut ReportTable,
+    base_table: &Table,
+    base_foreign_key: &ForeignKey,
+    target_foreign_key: Option<&ForeignKey>) -> bool {
+    let mut has_report = false;
+
+    let base_table_name = &base_table.name;
+    let base_foreign_key_name = &base_foreign_key.name;
+
+    match target_foreign_key {
+        Some(target_foreign_key) => {
+            // 외래키가 참조하는 테이블이 다르면 보고합니다.
+            if base_foreign_key.foreign_column != target_foreign_key.foreign_column {
+                let base_foreign_table_name =
+                    &base_foreign_key.foreign_column.table_name;
+                let base_foreign_column_name =
+                    &base_foreign_key.foreign_column.column_name;
+
+                let target_foreign_table_name =
+                    &target_foreign_key.foreign_column.table_name;
+                let target_foreign_column_name =
+                    &target_foreign_key.foreign_column.column_name;
+
+                let report_text = match context.config.current_language {
+                     Language::English=>format!(
+                         "Foreign Key: {base_table_name}.{base_foreign_key_name} references different column. => {base_foreign_table_name}.{base_foreign_column_name} != {target_foreign_table_name}.{target_foreign_column_name}"
+                     ),
+                     Language::Korean=>format!(
+                         "Foreign Key: {base_table_name}.{base_foreign_key_name}의 참조 컬럼이 다릅니다. => {base_foreign_table_name}.{base_foreign_column_name} != {target_foreign_table_name}.{target_foreign_column_name}"
+                     ),
+                 };
+
+                report_table.report_list.push(report_text);
+                has_report = true;
+            }
+        }
+        None => {
+            let report_text = match context.config.current_language {
+                 Language::English=>format!(
+                     "Foreign Key: {base_table_name}.{base_foreign_key_name} exists in the base database, but not in the target database."
+                 ),
+                 Language::Korean=>format!(
+                     "Foreign Key: {base_table_name}.{base_foreign_key_name}가 base 데이터베이스에는 있지만, target 데이터베이스에는 없습니다."
                  ),
              };
 
