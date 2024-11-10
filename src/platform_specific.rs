@@ -3,12 +3,13 @@ use std::path::PathBuf;
 use crate::config::Config;
 
 pub fn get_app_path() -> anyhow::Result<PathBuf> {
-    let home_dir = std::env::var("HOME").unwrap_or_else(|_| String::from(""));
-
-    log::debug!("home_dir: {home_dir}");
-
+    // ------- Windows Only
     #[cfg(target_os = "windows")]
-    let app_data_path = PathBuf::from(format!(r"{}\AppData\Local\magiceye", home_dir));
+    let app_data_path = PathBuf::from(r"\AppData\Local\magiceye");
+    // Windows Only -------
+
+    #[cfg(not(any(target_os = "windows")))]
+    let home_dir = env::var("HOME").unwrap_or_else(|_| String::from(""));
 
     #[cfg(target_os = "macos")]
     let app_data_path = PathBuf::from(format!("{}/Library/Application Support", home_dir));
